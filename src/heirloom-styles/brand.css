@@ -1,0 +1,301 @@
+/* Supplied final Heirloom identity: ivory, deep navy, atmospheric blue. */
+:root,
+body:has(.reference-home) {
+  --paper: #f1ede5;
+  --ink: #152a3b;
+  --muted: #7b8992;
+  --line: #d8dee0;
+  --orange: #326b99;
+  --dark: #101d29;
+  --sage: #94b8cf;
+  --brand-ivory: #f1ede5;
+  --brand-navy: #152c41;
+  --brand-blue: #326b99;
+}
+::selection {
+  background: #b3cee1;
+  color: #142d41;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+summary:focus-visible {
+  outline-color: #427fac;
+}
+.brand svg {
+  color: #244c6b;
+}
+.site-footer .brand svg {
+  color: #f1ede5;
+}
+.primary {
+  background: #326b99;
+  color: #f1ede5;
+}
+.primary:hover {
+  background: #25587f;
+}
+.reference-home {
+  color: #152a3b;
+}
+.reference-home .hero-intro .button {
+  background: #dce5ea;
+  color: #214561;
+}
+.reference-home .hero-intro .button:hover {
+  background: #cadbe6;
+}
+.hero-sample {
+  color: #6b7f8e;
+}
+.reference-home .hero-edge {
+  background: #dfe5e8;
+}
+.reference-home .edge-a {
+  background: #94b9d3;
+}
+.reference-home .edge-f::after {
+  background: #427da8;
+}
+.reference-home .orbit-center,
+.reference-home .graph-center,
+.reference-home .skeleton-logo {
+  background: #285d87;
+  color: #f1ede5;
+}
+.reference-home .orbit-document {
+  background: #e1e6e8;
+}
+.reference-home .orbit-document i {
+  background: #b2c0ca;
+}
+.reference-home .hero-canvas {
+  border-color: #dce2e5;
+}
+.reference-home .graph-node {
+  background: #e1e7eb;
+  color: #3a5367;
+}
+.reference-home .node-square {
+  background: #c0d0dc;
+}
+.reference-home .graph-lines g {
+  stroke: #c4d3de;
+}
+.reference-home .graph-scan {
+  background: #d7efff;
+  box-shadow: 0 0 12px #91c7ec;
+}
+.reference-home .scene-progress {
+  background: #5082a7;
+}
+.reference-home .step-track {
+  background: #d8e1e6;
+}
+.reference-home .reference-step {
+  color: #647582;
+}
+.reference-home .reference-step strong {
+  color: #18364d;
+}
+.reference-home .legacy-scroll,
+.reference-home .dark-section,
+.reference-home .dashboard-section,
+.reference-home .final-cta,
+body:has(.reference-home) .site-footer {
+  background: #101d29;
+}
+.reference-home .legacy-icon {
+  background: #2b5372;
+  color: #e8eff3;
+}
+.reference-home .legacy-card div > span {
+  color: #cedde8;
+}
+.reference-home .legacy-heading,
+.reference-home .dark-section,
+.reference-home .dashboard-section,
+.reference-home .final-cta {
+  color: #f1ede5;
+}
+.reference-home .split-statement h2 > svg {
+  border-color: #365268;
+}
+.reference-home .split-statement p {
+  color: #9aaebb;
+}
+.reference-home .light {
+  border-color: #365268;
+  color: #cfdfeb;
+}
+.reference-home .dark-note {
+  color: #8aa0b1;
+}
+.reference-home .dark-note strong {
+  color: #c5d5e0;
+}
+.reference-home .dashboard-mock {
+  background: #142535;
+  border-color: #2d4152;
+}
+.reference-home .dashboard-mock aside {
+  border-color: #2d4152;
+}
+.reference-home .mock-nav.selected {
+  background: #29465d;
+  color: #dce9f2;
+}
+.reference-home .mock-brand svg {
+  color: #f1ede5;
+}
+.reference-home .mock-vault,
+.reference-home .mock-stats > div {
+  border-color: #314757;
+}
+.reference-home .mock-chart path {
+  stroke: #8bb8d5;
+}
+.reference-home .dashboard-section .pale,
+.reference-home .final-cta .button {
+  background: #294d6a;
+  color: #f1ede5;
+}
+.reference-home .final-cta .button:hover {
+  background: #326283;
+}
+.reference-home .final-cta > .shell > .micro {
+  color: #90a6b7;
+}
+body:has(.reference-home) .footer-word {
+  color: #f1ede5;
+}
+body:has(.reference-home) .footer-bottom {
+  color: #8fa4b5;
+  border-color: #2e4354;
+}
+.site-footer {
+  color: #d6e2ea;
+}
+.footer-top,
+.footer-bottom {
+  border-color: #2e4354;
+}
+.footer-top > div,
+.footer-top > a:last-child,
+.fine-print {
+  color: #8da4b5;
+}
+.reference-home .capability-row:hover {
+  background: #e5eaeb;
+}
+.reference-home .capability-row > span:nth-child(2),
+.reference-home .capability-row p,
+.reference-home .workflow-grid article > p {
+  color: #75838c;
+}
+.reference-home .capability-head p,
+.reference-home .roadmap-strip > p {
+  color: #75838c;
+}
+.allocation-line > span:nth-child(1) {
+  background: #88adc6;
+}
+.allocation-line > span:nth-child(2) {
+  background: #5c85a6;
+}
+.allocation-line > span:nth-child(3) {
+  background: #b0c7d6;
+}
+.demo-notice {
+  background: #e0e9ef;
+  border-color: #cbdbe6;
+  color: #54738a;
+}
+.beta,
+.demo-label {
+  background: #dde5e9;
+  color: #657d8f;
+}
+.wizard-steps button.current {
+  color: #285d87;
+}
+.text-orange {
+  color: #356e99;
+}
+@media (max-width: 768px) {
+  .reference-home .edge-f {
+    background: #427da8;
+  }
+}
+/* Product surfaces follow the supplied navy/blue identity. Status, error, and
+   irreversible-mode warnings retain their semantic colours. */
+.form-section input,
+.form-section textarea,
+.form-section select,
+.money-input,
+.search-input,
+.workspace-tools select {
+  background-color: #f8f8f5;
+  border-color: #cfdadf;
+  color: #234159;
+}
+.form-section input::placeholder,
+.form-section textarea::placeholder,
+.search-input input::placeholder {
+  color: #8b9da8;
+}
+.wizard-steps .complete > span {
+  background: #7399b3;
+  border-color: #7399b3;
+}
+.aside-note,
+.portfolio-summary,
+.letter-note {
+  background: #e3eaf0;
+  border-color: #cddae3;
+}
+.mode.selected {
+  background: #e0eaf1;
+  border-color: #7095b0;
+}
+.review-card,
+.vault-card {
+  background: #eef1f1;
+  border-color: #d0dce3;
+}
+.workspace-stats,
+.workspace-stats > div,
+.asset-select,
+.asset-option,
+.card-bottom {
+  border-color: #d1dce3;
+}
+.vault-card .avatar {
+  background: #d1e0e9;
+  color: #476d88;
+}
+.workspace-title .eyebrow,
+.product-breadcrumb,
+.product-description,
+.field-hint,
+.workspace-stats strong small {
+  color: #718b9c;
+}
+.nav-app,
+.nav-links .active {
+  color: #326b99;
+  border-color: #9bb7ca;
+}
+.empty-icon {
+  background: #dce7ee;
+  color: #376e95;
+}
+.empty-icon > svg {
+  width: 32px;
+  height: 34px;
+}
+.footer-word {
+  color: #c4d5e0;
+}
