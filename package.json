@@ -15,6 +15,9 @@
     "rolldown": "1.2.1"
   },
   "dependencies": {
+    "@fontsource/inter": "5.3.0",
+    "@fontsource/libre-caslon-display": "5.3.0",
+    "@gsap/react": "2.1.2",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -52,8 +55,9 @@
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
+    "gsap": "3.15.0",
     "input-otp": "^1.4.2",
-    "lucide-react": "^0.575.0",
+    "lucide-react": "1.45.0",
     "react": "^19.2.0",
     "react-day-picker": "^9.14.0",
     "react-dom": "^19.2.0",
