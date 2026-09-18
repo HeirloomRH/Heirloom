@@ -30,8 +30,10 @@ export const assets = [
   { symbol: "MSFT", name: "Microsoft Stock Token" },
   { symbol: "GOOGL", name: "Alphabet Stock Token" },
   { symbol: "AMZN", name: "Amazon Stock Token" },
+  { symbol: "META", name: "Meta Platforms Token" },
   { symbol: "COIN", name: "Coinbase Stock Token" },
   { symbol: "USDG", name: "Global Dollar" },
+  { symbol: "ETH", name: "Ether (Base Asset)" },
 ];
 export const sample: Vault = {
   id: "sample",
