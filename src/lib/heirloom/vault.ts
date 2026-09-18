@@ -15,13 +15,22 @@ export type Vault = {
   createdAt: string;
   lastCheckIn: string;
   paused: boolean;
-  demo: true;
+  demo?: boolean;
+  vaultAddress?: string;
+  vaultIndex?: number;
+  corpusFunded?: boolean;
+  heartbeatDeadline?: string;
+  grantorAddress?: string;
 };
 export const assets = [
+  { symbol: "SPCX", name: "SpaceX / S&P Composite Token" },
   { symbol: "AAPL", name: "Apple Stock Token" },
-  { symbol: "MSFT", name: "Microsoft Stock Token" },
   { symbol: "NVDA", name: "NVIDIA Stock Token" },
-  { symbol: "SPY", name: "S&P 500 ETF Token" },
+  { symbol: "TSLA", name: "Tesla Stock Token" },
+  { symbol: "MSFT", name: "Microsoft Stock Token" },
+  { symbol: "GOOGL", name: "Alphabet Stock Token" },
+  { symbol: "AMZN", name: "Amazon Stock Token" },
+  { symbol: "COIN", name: "Coinbase Stock Token" },
   { symbol: "USDG", name: "Global Dollar" },
 ];
 export const sample: Vault = {
@@ -31,9 +40,9 @@ export const sample: Vault = {
   wallet: "0x1111111111111111111111111111111111111111",
   amount: 25000,
   allocations: [
-    { symbol: "AAPL", name: "Apple Stock Token", weight: 40 },
-    { symbol: "MSFT", name: "Microsoft Stock Token", weight: 35 },
-    { symbol: "SPY", name: "S&P 500 ETF Token", weight: 25 },
+    { symbol: "SPCX", name: "SpaceX / S&P Composite Token", weight: 40 },
+    { symbol: "AAPL", name: "Apple Stock Token", weight: 35 },
+    { symbol: "USDG", name: "Global Dollar", weight: 25 },
   ],
   schedule: [
     { date: "2036-06-18", percent: 25 },

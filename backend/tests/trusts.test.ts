@@ -85,4 +85,14 @@ describe("Trusts API Integration", () => {
       "Dearest Sophia, this trust was built for your future education and financial freedom."
     );
   });
+
+  it("GET /api/trusts should return public on-chain trusts", async () => {
+    const res = await request(app).get("/api/trusts");
+
+    expect(res.status).toBe(200);
+    expect(res.body.count).toBeGreaterThanOrEqual(1);
+    expect(Array.isArray(res.body.trusts)).toBe(true);
+    const found = res.body.trusts.find((t: any) => t.id === createdTrustId);
+    expect(found).toBeDefined();
+  });
 });

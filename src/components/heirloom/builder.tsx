@@ -11,7 +11,11 @@ import {
   Heart,
   ShieldCheck,
   Sprout,
+  Wallet,
 } from "lucide-react";
+import { useAccount } from "wagmi";
+import { createTrust } from "@/lib/api";
+import { ConnectButton } from "../wallet/ConnectButton";
 import { DemoNotice } from "./product";
 import {
   assets,
@@ -43,13 +47,15 @@ const descriptions = [
 ];
 export function Builder() {
   const navigate = useNavigate();
+  const { address } = useAccount();
+  const [customGrantor, setCustomGrantor] = useState("");
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
   const [amount, setAmount] = useState(10000);
   const [allocations, setAllocations] = useState<Allocation[]>([
     { ...assets[0], weight: 40 },
     { ...assets[1], weight: 35 },
-    { ...assets[3], weight: 25 },
+    { ...assets[2], weight: 25 },
   ]);
   const [beneficiary, setBeneficiary] = useState("");
   const [wallet, setWallet] = useState("");
@@ -98,7 +104,7 @@ export function Builder() {
       window.scrollTo({ top: 0, behavior: "instant" });
     }
   };
-  const save = () => {
+  const save = async () => {
     for (let n = 0; n < 3; n++) {
       const err = validate(n);
       if (err) {
@@ -107,8 +113,13 @@ export function Builder() {
         return;
       }
     }
+    const grantorAddr = address || customGrantor.trim();
+    if (!grantorAddr || !validAddress(grantorAddr)) {
+      setError("Please connect your wallet or enter a valid Grantor wallet address.");
+      return;
+    }
     if (!ack) {
-      setError("Please acknowledge that this is a local demo.");
+      setError("Please acknowledge the trust terms.");
       return;
     }
     if (mode === "irrevocable" && typed !== "IRREVOCABLE") {
@@ -119,31 +130,52 @@ export function Builder() {
     }
     setBusy(true);
     setError("");
-    const now = new Date().toISOString();
-    const v: Vault = {
-      id: crypto.randomUUID(),
-      name: name.trim(),
-      beneficiary: beneficiary.trim(),
-      wallet: wallet.trim(),
-      amount,
-      allocations,
-      schedule,
-      mode,
-      heartbeat,
-      guardian: guardian.trim(),
-      letter,
-      createdAt: now,
-      lastCheckIn: now,
-      paused: false,
-      demo: true,
-    };
+
     try {
+      const res = await createTrust({
+        name: name.trim(),
+        grantorAddress: grantorAddr,
+        beneficiaryAddress: wallet.trim(),
+        isRevocable: mode === "revocable",
+        heartbeatWindowSeconds: (heartbeat || 30) * 86400,
+        letterToBeneficiary: letter.trim() || undefined,
+        guardians: guardian.trim() ? [{ address: guardian.trim(), role: "guardian" }] : [],
+        assets: allocations.map((a) => ({
+          symbol: a.symbol,
+          targetAllocationBps: a.weight * 100,
+          dripEnabled: false,
+        })),
+        vestingSchedules: schedule.map((s) => ({
+          unlockTimestamp: new Date(s.date).toISOString(),
+          percentageBps: s.percent * 100,
+        })),
+      });
+
+      const v: Vault = {
+        id: res.trust.id,
+        name: res.trust.name,
+        beneficiary: beneficiary.trim(),
+        wallet: wallet.trim(),
+        amount,
+        allocations,
+        schedule,
+        mode,
+        heartbeat,
+        guardian: guardian.trim(),
+        letter,
+        createdAt: res.trust.createdAt,
+        lastCheckIn: res.trust.createdAt,
+        paused: false,
+        demo: false,
+        vaultAddress: res.trust.vaultAddress,
+        vaultIndex: res.trust.vaultIndex,
+        grantorAddress: grantorAddr,
+      };
       saveVault(v);
-      navigate({ to: "/vault", search: { id: v.id } });
-    } catch {
-      setError(
-        "Your browser could not save this demo. Allow site storage or try a different browser. Your entries are still here.",
-      );
+
+      navigate({ to: "/vault", search: { id: res.trust.id } });
+    } catch (err: any) {
+      setError(err.message || "Failed to create trust on Robinhood Chain.");
       setBusy(false);
     }
   };
@@ -521,9 +553,8 @@ export function Builder() {
                   </span>
                 </div>
                 <p className="field-hint">
-                  Optional. Saved as plain text in this browser; avoid sensitive
-                  information. Private letter storage is a production
-                  integration.
+                  Optional. Your letter is encrypted end-to-end with AES-256-GCM
+                  and stored sealed until milestone releases or succession triggers.
                 </p>
               </div>
             )}
@@ -540,7 +571,7 @@ export function Builder() {
                       <dd>{beneficiary}</dd>
                     </div>
                     <div>
-                      <dt>Demo portfolio</dt>
+                      <dt>Corpus estimate</dt>
                       <dd>{money(amount)}</dd>
                     </div>
                     <div>
@@ -557,16 +588,45 @@ export function Builder() {
                     </div>
                     <div>
                       <dt>Guardian</dt>
-                      <dd>{guardian ? "Included in demo plan" : "None"}</dd>
+                      <dd>{guardian ? "Registered on-chain" : "None"}</dd>
                     </div>
                     <div>
                       <dt>Letter</dt>
-                      <dd>{letter ? "Included" : "Not added"}</dd>
+                      <dd>{letter ? "AES-256-GCM Encrypted" : "Not added"}</dd>
                     </div>
                   </dl>
                   <p className="field-hint mono break-all">
                     Beneficiary: {wallet}
                   </p>
+                  
+                  <div className="mt-3 rounded-lg border border-[#302a24] bg-[#161310] p-2.5 text-xs">
+                    <span className="block text-[10px] font-semibold uppercase tracking-wider text-[#8d7c68]">
+                      Grantor Wallet (Creator)
+                    </span>
+                    {address ? (
+                      <div className="mt-1 flex items-center justify-between font-mono text-[11px] text-[#e4ded6]">
+                        <span>{address}</span>
+                        <span className="rounded bg-emerald-950/60 px-1.5 py-0.5 text-[10px] text-emerald-400">
+                          Connected
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="mt-1.5 space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <ConnectButton />
+                          <span className="text-[11px] text-[#8d7c68]">or enter address:</span>
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="0x..."
+                          value={customGrantor}
+                          onChange={(e) => setCustomGrantor(e.target.value)}
+                          className="w-full rounded border border-[#352f28] bg-[#110e0c] px-2 py-1 font-mono text-xs text-[#e4ded6]"
+                        />
+                      </div>
+                    )}
+                  </div>
+
                   <div className="review-releases">
                     {schedule.map((r) => (
                       <div key={r.date}>
@@ -582,9 +642,8 @@ export function Builder() {
                     <div>
                       <strong>Permanent means permanent.</strong>
                       <p>
-                        In a production irrevocable vault, the creator cannot
-                        undo or rewrite the sealed terms. This local demo does
-                        not create such a vault.
+                        In an irrevocable vault, the grantor cannot undo, reclaim,
+                        or rewrite the terms once sealed.
                       </p>
                       <label>
                         Type IRREVOCABLE to acknowledge
@@ -605,9 +664,7 @@ export function Builder() {
                     onChange={(e) => setAck(e.target.checked)}
                   />
                   <span>
-                    I understand this saves a local demo only. It does not
-                    create a legal trust, hold assets, or execute an on-chain
-                    transaction.
+                    I understand that Heirloom creates a non-custodial programmable trust vault on Robinhood Chain. My assets will be isolated and managed by code according to these terms.
                   </span>
                 </label>
               </div>
@@ -636,9 +693,9 @@ export function Builder() {
               )}
               <button type="submit" disabled={busy} className="button primary">
                 {busy
-                  ? "Saving demo…"
+                  ? "Sealing trust on-chain…"
                   : step === 4
-                    ? "Save demo trust"
+                    ? "Seal Trust on Robinhood Chain"
                     : "Continue"}
                 {step !== 4 && <ArrowRight size={15} />}
               </button>

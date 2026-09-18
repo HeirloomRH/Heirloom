@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useRouterState } from "@tanstack/react-router";
 import { useState, useEffect, useId } from "react";
 import { ArrowUpRight, Menu, X } from "lucide-react";
+import { ConnectButton } from "../wallet/ConnectButton";
 export function Mark({ className = "" }: { className?: string }) {
   const maskId = useId();
   return (
@@ -84,7 +85,13 @@ export function SiteHeader() {
           <Link className="nav-app" to="/app" onClick={() => setOpen(false)}>
             Open app <ArrowUpRight size={15} />
           </Link>
+          <div className="hidden sm:inline-block">
+            <ConnectButton />
+          </div>
         </nav>
+        <div className="sm:hidden mr-2">
+          <ConnectButton />
+        </div>
         <button
           className="menu-toggle icon-button"
           aria-label={open ? "Close menu" : "Open menu"}

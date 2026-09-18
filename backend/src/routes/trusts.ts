@@ -22,6 +22,33 @@ import { getAddress, isAddress } from "viem";
 export const trustsRouter = Router();
 
 /**
+ * GET /api/trusts
+ * List recent trusts across Robinhood Chain
+ */
+trustsRouter.get("/", async (req: Request, res: Response) => {
+  try {
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 20));
+    const result = await query(
+      `SELECT id, name, grantor_address, beneficiary_address, vault_index, vault_address,
+              status, is_revocable, corpus_funded, heartbeat_window_seconds,
+              last_heartbeat_at, heartbeat_deadline, created_at
+       FROM trusts
+       ORDER BY created_at DESC
+       LIMIT $1`,
+      [limit]
+    );
+
+    res.json({
+      count: result.rows.length,
+      trusts: result.rows,
+    });
+  } catch (err: any) {
+    console.error("Error listing trusts:", err);
+    res.status(500).json({ error: "Failed to list trusts", details: err.message });
+  }
+});
+
+/**
  * POST /api/trusts
  * Create a new trust and allocate a dedicated vault address
  */
