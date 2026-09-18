@@ -31,6 +31,7 @@ import {
 } from "@/lib/api";
 import { ROBINHOOD_CHAIN_ID, ROBINHOOD_EXPLORER_URL } from "@/lib/chain";
 import { DemoNotice, Dialog } from "./product";
+import { AssetIcon } from "./asset-icon";
 import {
   sample,
   readVaults,
@@ -431,8 +432,11 @@ export function VaultView() {
                 {realTrust.liveBalances
                   .filter((b) => BigInt(b.balanceRaw) > 0n)
                   .map((b) => (
-                    <div key={b.token.symbol} className="flex items-center justify-between font-mono text-sm text-[#f5efe6]">
-                      <span>{b.token.name} ({b.token.symbol})</span>
+                    <div key={b.token.symbol} className="flex items-center justify-between font-mono text-sm text-[#f5efe6] py-1 border-b border-[#25201b]/40 last:border-0">
+                      <div className="flex items-center gap-2">
+                        <AssetIcon symbol={b.token.symbol} className="w-5 h-5" />
+                        <span>{b.token.name} ({b.token.symbol})</span>
+                      </div>
                       <span className="font-semibold text-emerald-400">{b.balanceFormatted} {b.token.symbol}</span>
                     </div>
                   ))}
@@ -519,11 +523,13 @@ export function VaultView() {
                       return (
                         <tr key={a.symbol}>
                           <td>
-                            <span className="asset-symbol">{a.symbol[0]}</span>
-                            <span>
-                              <b>{a.symbol}</b>
-                              <small>{a.name}</small>
-                            </span>
+                            <div className="flex items-center gap-3">
+                              <AssetIcon symbol={a.symbol} className="w-8 h-8" />
+                              <div>
+                                <b className="font-semibold text-sm">{a.symbol}</b>
+                                <small className="block text-[11px] text-[#988772]">{a.name}</small>
+                              </div>
+                            </div>
                           </td>
                           <td>{a.weight}%</td>
                           <td className="font-mono">

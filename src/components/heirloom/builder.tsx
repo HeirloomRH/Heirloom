@@ -17,6 +17,7 @@ import { useAccount } from "wagmi";
 import { createTrust } from "@/lib/api";
 import { ConnectButton } from "../wallet/ConnectButton";
 import { DemoNotice } from "./product";
+import { AssetIcon } from "./asset-icon";
 import {
   assets,
   saveVault,
@@ -292,9 +293,7 @@ export function Builder() {
                             )
                           }
                         >
-                          <span className="asset-symbol">
-                            {a.symbol === "USDG" ? "$" : a.symbol[0]}
-                          </span>
+                          <AssetIcon symbol={a.symbol} className="w-8 h-8" />
                           <span>
                             <b>{a.symbol}</b>
                             <small>{a.name}</small>
@@ -732,8 +731,11 @@ export function Builder() {
               ))}
             </div>
             {allocations.map((a) => (
-              <div className="aside-allocation" key={a.symbol}>
-                <span>{a.symbol}</span>
+              <div className="aside-allocation flex items-center justify-between" key={a.symbol}>
+                <span className="flex items-center gap-1.5">
+                  <AssetIcon symbol={a.symbol} className="w-4 h-4" />
+                  {a.symbol}
+                </span>
                 <span>{a.weight}%</span>
               </div>
             ))}
