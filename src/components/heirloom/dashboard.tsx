@@ -178,15 +178,15 @@ export function Dashboard() {
 
       {/* Network & Wallet Status Bar */}
       {!isConnected && (
-        <div className="mb-6 rounded-lg border border-[#3e3428] bg-[#1d1915] p-4 text-sm text-[#d4cbbd] flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+        <div className="mb-6 rounded-lg border border-[#d8dee0] bg-[#eae5dc] p-4 text-sm text-[#152a3b] flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="rounded-full bg-[#352c22] p-2 text-[#e2a850]">
+            <div className="rounded-full bg-[#d5cdbf] p-2 text-[#152c41]">
               <Wallet size={18} />
             </div>
             <div>
-              <p className="font-medium text-[#f3eee6]">Connect your Robinhood Chain wallet</p>
-              <p className="text-xs text-[#9d8e7d]">
-                Connect to view your grantor vaults, sign dead-man switch heartbeats, and claim beneficiary payouts.
+              <p className="font-medium text-[#152c41]">Connect your Robinhood Chain wallet</p>
+              <p className="text-xs text-[#6b7c88]">
+                Connect to view your grantor vaults, sign off-chain heartbeats, and claim beneficiary inheritances.
               </p>
             </div>
           </div>

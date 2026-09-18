@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiProvider } from "wagmi";
+import { RainbowKitProvider, lightTheme } from "@rainbow-me/rainbowkit";
 import { wagmiConfig } from "../lib/wallet/wagmi";
 import {
   Outlet,
@@ -121,13 +122,24 @@ function RootComponent() {
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <a className="skip" href="#main">
-          Skip to content
-        </a>
-        <SiteHeader />
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
-        <SiteFooter />
+        <RainbowKitProvider
+          modalSize="compact"
+          theme={lightTheme({
+            accentColor: "#152c41",
+            accentColorForeground: "#f1ede5",
+            borderRadius: "medium",
+            fontStack: "system",
+            overlayBlur: "small",
+          })}
+        >
+          <a className="skip" href="#main">
+            Skip to content
+          </a>
+          <SiteHeader />
+          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+          <Outlet />
+          <SiteFooter />
+        </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );
