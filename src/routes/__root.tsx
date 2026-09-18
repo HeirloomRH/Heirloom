@@ -1,4 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { WagmiProvider } from "wagmi";
+import { wagmiConfig } from "../lib/wallet/wagmi";
 import {
   Outlet,
   Link,
@@ -117,14 +119,16 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <a className="skip" href="#main">
-        Skip to content
-      </a>
-      <SiteHeader />
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
-      <SiteFooter />
-    </QueryClientProvider>
+    <WagmiProvider config={wagmiConfig}>
+      <QueryClientProvider client={queryClient}>
+        <a className="skip" href="#main">
+          Skip to content
+        </a>
+        <SiteHeader />
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        <Outlet />
+        <SiteFooter />
+      </QueryClientProvider>
+    </WagmiProvider>
   );
 }
