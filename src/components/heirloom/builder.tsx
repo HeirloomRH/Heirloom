@@ -790,28 +790,28 @@ export function Builder() {
       {successData && (
         <Dialog title="Trust Sealed On-Chain" onClose={goToVault}>
           <div className="dialog-body">
-            <div className="flex items-start gap-3">
-              <div style={{ background: "#d4ede4", borderRadius: "50%", padding: "6px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <Check size={20} className="text-emerald-700" />
+            <div className="flex items-start gap-3.5">
+              <div className="success-badge">
+                <Check size={18} />
               </div>
-              <div style={{ flex: 1 }}>
-                <h4 style={{ margin: "0 0 6px 0", fontSize: "16px", color: "var(--ink)", fontWeight: 600 }}>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-serif text-lg font-semibold text-[#152a3b] mb-1">
                   {successData.name}
                 </h4>
-                <p className="text-sm leading-relaxed" style={{ color: "#6a5e4d", margin: "0 0 12px 0" }}>
-                  Your trust has been successfully created and sealed on Robinhood Chain with dedicated on-chain vault address:
+                <p className="text-xs leading-relaxed text-[#6a5e4d] mb-3">
+                  Your trust has been created on Robinhood Chain with a dedicated vault address:
                 </p>
-                <div style={{ background: "#f7f3ec", border: "1px solid var(--line)", borderRadius: "4px", padding: "8px 12px", fontFamily: "var(--mono)", fontSize: "11px", wordBreak: "break-all", color: "var(--ink)" }}>
+                <div className="vault-address-snippet">
                   {successData.vaultAddress}
                 </div>
-                <p className="field-hint" style={{ marginTop: "14px", fontSize: "11px", color: "#8a7c68" }}>
+                <p className="field-hint mt-3 text-[11px] text-[#8a7c68]">
                   Opening your live vault in {countdown}s…
                 </p>
               </div>
             </div>
-            <div className="dialog-actions" style={{ marginTop: "20px" }}>
+            <div className="dialog-actions mt-5">
               <button className="button primary" onClick={goToVault}>
-                View Vault Now <ArrowRight size={14} />
+                View Vault Now <ArrowRight size={13} />
               </button>
             </div>
           </div>
