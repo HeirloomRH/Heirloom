@@ -8,23 +8,18 @@ import {
   Clock3,
   LayoutGrid,
   Rows3,
-  ShieldCheck,
   Wallet,
-  ExternalLink,
-  CheckCircle2,
-  AlertTriangle,
   RefreshCw,
-  Sparkles,
+  AlertTriangle,
 } from "lucide-react";
 import { Mark } from "./chrome";
-import { DemoNotice } from "./product";
+import { Dialog } from "./product";
 import { useAccount } from "wagmi";
 import {
   fetchGrantorTrusts,
   fetchBeneficiaryTrusts,
   fetchAllTrusts,
 } from "@/lib/api";
-import { ROBINHOOD_CHAIN_ID, ROBINHOOD_EXPLORER_URL } from "@/lib/chain";
 import { ConnectButton } from "../wallet/ConnectButton";
 
 export interface NormalizedTrust {
@@ -159,8 +154,6 @@ export function Dashboard() {
 
   return (
     <div className="shell">
-      <DemoNotice />
-
       <div className="workspace-title">
         <div>
           <p className="eyebrow">YOUR ON-CHAIN TRUST WORKSPACE</p>
@@ -204,11 +197,11 @@ export function Dashboard() {
           <span>Live across Robinhood Chain</span>
         </div>
         <div>
-          <span>Robinhood Chain L2</span>
+          <span>Funded & Active</span>
           <strong>
-            4663
+            {String(trusts.filter(t => t.corpusFunded).length).padStart(2, "0")}
           </strong>
-          <span>EVM Nitro · Fast finality</span>
+          <span>Corpus deposited & armed</span>
         </div>
         <div>
           <span>Beneficiary Wallets</span>
@@ -265,12 +258,6 @@ export function Dashboard() {
           {list ? <LayoutGrid size={15} /> : <Rows3 size={15} />}
         </button>
       </div>
-
-      {error && (
-        <div role="alert" className="error-message my-4 p-4 border border-rose-900/50 bg-rose-950/30 text-rose-300 rounded text-sm">
-          {error}
-        </div>
-      )}
 
       {loading ? (
         <div className="empty-state" role="status">
@@ -338,7 +325,7 @@ export function Dashboard() {
                 </strong>
 
                 <span className="micro uppercase tracking-wider text-[9px] text-[#a08a6b] mt-2 block">
-                  {t.isRevocable ? "Revocable Trust" : "Irrevocable Trust"} · RHC NITRO
+                  {t.isRevocable ? "Revocable Trust" : "Irrevocable Trust"} · Robinhood Chain
                 </span>
 
                 <div className="spread card-bottom mt-4">
@@ -403,6 +390,28 @@ export function Dashboard() {
           Learn about letters <ArrowUpRight size={14} />
         </Link>
       </div>
+
+      {/* Error Modal */}
+      {error && (
+        <Dialog title="Something went wrong" onClose={() => setError("")}>
+          <div className="dialog-body">
+            <div className="flex items-start gap-3">
+              <AlertTriangle size={20} className="text-rose-400 mt-0.5 shrink-0" />
+              <p className="text-sm leading-relaxed" style={{ color: "var(--ink)" }}>
+                {error}
+              </p>
+            </div>
+            <div className="dialog-actions">
+              <button className="button secondary" onClick={() => setError("")}>
+                Dismiss
+              </button>
+              <button className="button primary" onClick={loadTrusts}>
+                Try Again
+              </button>
+            </div>
+          </div>
+        </Dialog>
+      )}
     </div>
   );
 }

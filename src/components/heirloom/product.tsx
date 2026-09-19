@@ -1,27 +1,20 @@
 import { useEffect, useRef } from "react";
 import { Link } from "@tanstack/react-router";
-import { X, ArrowUpRight, ShieldCheck } from "lucide-react";
-import { ROBINHOOD_CHAIN_ID, ROBINHOOD_EXPLORER_URL } from "@/lib/chain";
+import { X, ArrowUpRight } from "lucide-react";
+import { ROBINHOOD_EXPLORER_URL } from "@/lib/chain";
 
 export function DemoNotice() {
   return (
-    <div className="demo-notice flex items-center justify-between border-b border-[#302a24] bg-[#1a1613]/80 px-4 py-2 text-xs text-[#c4bcaf]">
-      <div className="flex items-center gap-2">
-        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-        <span className="font-medium text-[#e4ded6]">
-          Robinhood Chain (Chain ID: {ROBINHOOD_CHAIN_ID})
-        </span>
-        <span className="notice-detail text-[#8d7c68]">
-          · Dedicated Vault Engine · Non-Custodial Trust Vaults
-        </span>
-      </div>
+    <div className="demo-notice">
+      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+      <span>Robinhood Chain · Live</span>
       <a
         href={ROBINHOOD_EXPLORER_URL}
         target="_blank"
         rel="noreferrer"
-        className="inline-flex items-center gap-1 text-[#c4a47c] transition hover:text-[#e4ded6]"
+        className="inline-flex items-center gap-1"
       >
-        Blockscout Explorer <ArrowUpRight size={12} />
+        Explorer <ArrowUpRight size={10} />
       </a>
     </div>
   );
