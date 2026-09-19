@@ -1252,6 +1252,28 @@
   line-height: 1.75;
   color: #6d5b34;
 }
+.success-badge {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #d4ede4;
+  color: #2d6a4f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.vault-address-snippet {
+  background: #f7f3ec;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 10px 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  word-break: break-all;
+  color: var(--ink);
+  line-height: 1.6;
+}
 .docs-page {
   padding-top: 47px;
   padding-bottom: 80px;
