@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import { requestLogger } from "./middleware/requestLogger.js";
 import { healthRouter } from "./routes/health.js";
 import { tokensRouter } from "./routes/tokens.js";
 import { trustsRouter } from "./routes/trusts.js";
@@ -8,6 +9,7 @@ export const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(requestLogger);
 
 // Health route
 app.use("/health", healthRouter);
