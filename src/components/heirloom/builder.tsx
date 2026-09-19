@@ -11,12 +11,14 @@ import {
   Heart,
   ShieldCheck,
   Sprout,
+  AlertTriangle,
   Wallet,
 } from "lucide-react";
 import { useAccount } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { createTrust } from "@/lib/api";
 import { ConnectButton } from "../wallet/ConnectButton";
-import { DemoNotice } from "./product";
+import { Dialog } from "./product";
 import { AssetIcon } from "./asset-icon";
 import {
   assets,
@@ -32,6 +34,7 @@ import {
   validateSchedule,
   validAddress,
 } from "@/lib/heirloom/validation.mjs";
+
 const titles = [
   "The foundation.",
   "Someone worth building for.",
@@ -44,11 +47,13 @@ const descriptions = [
   "Put a person at the heart of your plan.",
   "Choose when and how the future unfolds.",
   "Tell them why you started.",
-  "Read the plan carefully before saving your demo.",
+  "Read the plan carefully before saving your trust.",
 ];
+
 export function Builder() {
   const navigate = useNavigate();
   const { address } = useAccount();
+  const { openConnectModal } = useConnectModal();
   const [customGrantor, setCustomGrantor] = useState("");
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
@@ -73,19 +78,22 @@ export function Builder() {
   const [typed, setTyped] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+
   useEffect(() => {
     document.getElementById("builder-heading")?.focus();
   }, [step]);
+
   const total = allocations.reduce((s, a) => s + a.weight, 0);
+
   const validate = (n: number) => {
     if (n === 0) {
       if (!name.trim()) return "Give your trust a name.";
       return validateAllocations(amount, allocations);
     }
     if (n === 1) {
-      if (!beneficiary.trim()) return "Enter the beneficiary’s name.";
+      if (!beneficiary.trim()) return "Enter the beneficiary's name.";
       if (!validAddress(wallet.trim()))
-        return "Enter a valid, non-zero Ethereum-style wallet address (0x + 40 hex characters).";
+        return "Enter a valid wallet address for the beneficiary (0x followed by 40 hex characters).";
     }
     if (n === 2) {
       const e = validateSchedule(schedule);
@@ -97,14 +105,17 @@ export function Builder() {
     }
     return "";
   };
+
   const next = () => {
     const err = validate(step);
-    setError(err);
-    if (!err) {
+    if (err) {
+      setError(err);
+    } else {
       setStep(step + 1);
       window.scrollTo({ top: 0, behavior: "instant" });
     }
   };
+
   const save = async () => {
     for (let n = 0; n < 3; n++) {
       const err = validate(n);
@@ -116,17 +127,15 @@ export function Builder() {
     }
     const grantorAddr = address || customGrantor.trim();
     if (!grantorAddr || !validAddress(grantorAddr)) {
-      setError("Please connect your wallet or enter a valid Grantor wallet address.");
+      setError("Please connect your wallet or enter a valid grantor wallet address.");
       return;
     }
     if (!ack) {
-      setError("Please acknowledge the trust terms.");
+      setError("Please acknowledge the trust terms before sealing.");
       return;
     }
     if (mode === "irrevocable" && typed !== "IRREVOCABLE") {
-      setError(
-        "Type IRREVOCABLE to confirm you understand the intended permanent terms.",
-      );
+      setError("Type IRREVOCABLE to confirm you understand the permanent terms.");
       return;
     }
     setBusy(true);
@@ -176,13 +185,13 @@ export function Builder() {
 
       navigate({ to: "/vault", search: { id: res.trust.id } });
     } catch (err: any) {
-      setError(err.message || "Failed to create trust on Robinhood Chain.");
+      setError(err.message || "Failed to create trust on Robinhood Chain. Please try again.");
       setBusy(false);
     }
   };
+
   return (
     <div className="shell">
-      <DemoNotice />
       <div className="product-breadcrumb">
         <Link to="/app">
           <ArrowLeft size={13} /> Your workspace
@@ -235,7 +244,7 @@ export function Builder() {
                     maxLength={70}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Emma’s tomorrow"
+                    placeholder="e.g. Emma's tomorrow"
                   />
                 </label>
                 <label>
@@ -334,8 +343,7 @@ export function Builder() {
                 <div className="form-callout">
                   <Sprout size={17} />
                   <p>
-                    This basket is a starting point for a demo, not an
-                    investment recommendation.
+                    This basket is a starting point, not an investment recommendation.
                   </p>
                 </div>
               </div>
@@ -365,7 +373,7 @@ export function Builder() {
                 </label>
                 <p className="field-hint">
                   The intended receiving wallet. The address must be correct
-                  before any production vault is created.
+                  before any vault is created.
                 </p>
                 <button
                   type="button"
@@ -381,8 +389,7 @@ export function Builder() {
                   <Heart size={18} />
                   <p>
                     A real deployment will require verified eligibility for the
-                    creator and beneficiary. No personal verification is
-                    performed in this demo.
+                    creator and beneficiary.
                   </p>
                 </div>
               </div>
@@ -508,10 +515,6 @@ export function Builder() {
                     <option value="365">Every 365 days</option>
                   </select>
                 </label>
-                <p className="field-hint">
-                  A production grace period and succession executor are still to
-                  be configured. This demo never triggers transfers.
-                </p>
                 <label>
                   Guardian wallet{" "}
                   <span className="field-hint">
@@ -544,7 +547,7 @@ export function Builder() {
                     placeholder={
                       "Dear " +
                       (beneficiary || "you") +
-                      ",\n\nThis is for the life you’ll build…"
+                      ",\n\nThis is for the life you'll build…"
                     }
                   />
                   <span className="field-hint">
@@ -591,36 +594,47 @@ export function Builder() {
                     </div>
                     <div>
                       <dt>Letter</dt>
-                      <dd>{letter ? "AES-256-GCM Encrypted" : "Not added"}</dd>
+                      <dd>{letter ? "Encrypted & sealed" : "Not added"}</dd>
                     </div>
                   </dl>
                   <p className="field-hint mono break-all">
                     Beneficiary: {wallet}
                   </p>
-                  
-                  <div className="mt-3 rounded-lg border border-[#302a24] bg-[#161310] p-2.5 text-xs">
-                    <span className="block text-[10px] font-semibold uppercase tracking-wider text-[#8d7c68]">
-                      Grantor Wallet (Creator)
-                    </span>
+
+                  {/* Grantor wallet — on-brand */}
+                  <div className="vault-address-card" style={{ marginTop: "16px" }}>
+                    <div className="vault-address-card-title" style={{ marginBottom: "10px" }}>
+                      <ShieldCheck size={13} />
+                      <span>Grantor Wallet (Creator)</span>
+                    </div>
                     {address ? (
-                      <div className="mt-1 flex items-center justify-between font-mono text-[11px] text-[#e4ded6]">
-                        <span>{address}</span>
-                        <span className="rounded bg-emerald-950/60 px-1.5 py-0.5 text-[10px] text-emerald-400">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="vault-address-mono" style={{ borderTop: "none", padding: 0, fontSize: "11px" }}>
+                          {address}
+                        </p>
+                        <span className="vault-address-badge" style={{ background: "#d4ede4", color: "#2d6a4f", borderColor: "#b7dbc8", whiteSpace: "nowrap" }}>
                           Connected
                         </span>
                       </div>
                     ) : (
-                      <div className="mt-1.5 space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <ConnectButton />
-                          <span className="text-[11px] text-[#8d7c68]">or enter address:</span>
-                        </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                        <button
+                          type="button"
+                          className="button primary"
+                          onClick={openConnectModal}
+                        >
+                          <Wallet size={13} /> Connect Wallet
+                        </button>
+                        <p className="field-hint" style={{ margin: 0 }}>or paste your wallet address:</p>
                         <input
                           type="text"
                           placeholder="0x..."
                           value={customGrantor}
                           onChange={(e) => setCustomGrantor(e.target.value)}
-                          className="w-full rounded border border-[#352f28] bg-[#110e0c] px-2 py-1 font-mono text-xs text-[#e4ded6]"
+                          className="mono"
+                          spellCheck={false}
+                          autoComplete="off"
+                          maxLength={42}
                         />
                       </div>
                     )}
@@ -663,14 +677,9 @@ export function Builder() {
                     onChange={(e) => setAck(e.target.checked)}
                   />
                   <span>
-                    I understand that Heirloom creates a non-custodial programmable trust vault on Robinhood Chain. My assets will be isolated and managed by code according to these terms.
+                    I understand that Heirloom creates a programmable trust vault on Robinhood Chain. My assets will be isolated and managed by code according to these terms.
                   </span>
                 </label>
-              </div>
-            )}
-            {error && (
-              <div className="error-message" role="alert">
-                {error}
               </div>
             )}
             <div className="wizard-actions">
@@ -745,11 +754,29 @@ export function Builder() {
             </div>
           </div>
           <p className="aside-disclaimer">
-            You’re exploring the Heirloom frontend. All values are illustrative,
-            and saved plans stay in this browser.
+            All values are illustrative. Saved trusts are written to Robinhood Chain.
           </p>
         </aside>
       </div>
+
+      {/* Error Modal — all validation + API errors go here */}
+      {error && (
+        <Dialog title="Check your details" onClose={() => setError("")}>
+          <div className="dialog-body">
+            <div className="flex items-start gap-3">
+              <AlertTriangle size={20} className="text-rose-500 mt-0.5 shrink-0" />
+              <p className="text-sm leading-relaxed" style={{ color: "var(--ink)" }}>
+                {error}
+              </p>
+            </div>
+            <div className="dialog-actions">
+              <button className="button primary" onClick={() => setError("")}>
+                Got it
+              </button>
+            </div>
+          </div>
+        </Dialog>
+      )}
     </div>
   );
 }

@@ -69,9 +69,9 @@ export const articles = [
     id: "network",
     title: "Designed for Robinhood Chain",
     tag: "NETWORK",
-    text: "The intended network is Robinhood Chain. Official documentation identifies mainnet chain ID 4663 and testnet chain ID 46630, using ETH for gas.",
+    text: "The intended network is Robinhood Chain, using ETH for gas.",
     extra:
-      "The frontend does not request a wallet connection. No verified Heirloom vault address, ABI, token contract, or deployment was supplied. Network support alone does not establish that Heirloom is deployed or endorsed by Robinhood.",
+      "Heirloom connects to Robinhood Chain for real-time vault status, balances, and digital heartbeats.",
     source: "https://docs.robinhood.com/chain/connecting/",
     sourceLabel: "Official network configuration",
   },

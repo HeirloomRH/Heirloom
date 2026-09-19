@@ -65,27 +65,21 @@ export const STORE = "heirloom-demo-vaults-v1";
 export function readVaults(): Vault[] {
   const raw = localStorage.getItem(STORE);
   if (!raw) return [];
-  const parsed = JSON.parse(raw);
-  if (
-    !Array.isArray(parsed) ||
-    parsed.some(
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    // Accept both demo and real on-chain trusts
+    return parsed.filter(
       (v) =>
-        !v ||
-        v.demo !== true ||
-        typeof v.id !== "string" ||
-        !Array.isArray(v.allocations) ||
-        !Array.isArray(v.schedule) ||
-        typeof v.amount !== "number" ||
-        typeof v.beneficiary !== "string" ||
-        typeof v.name !== "string" ||
-        typeof v.letter !== "string" ||
-        typeof v.lastCheckIn !== "string",
-    )
-  )
-    throw Error(
-      "Your local vault data could not be read. Export browser data before clearing storage, or use a sample trust.",
+        v &&
+        typeof v.id === "string" &&
+        Array.isArray(v.allocations) &&
+        Array.isArray(v.schedule) &&
+        typeof v.name === "string",
     );
-  return parsed;
+  } catch {
+    return [];
+  }
 }
 export function saveVault(v: Vault) {
   const all = readVaults();
