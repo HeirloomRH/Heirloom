@@ -22,7 +22,8 @@ import {
   AlertTriangle,
   SendHorizonal,
 } from "lucide-react";
-import { useAccount, useSignTypedData, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useAccount, useSignTypedData, useWriteContract, useWaitForTransactionReceipt, useReadContract } from "wagmi";
+import { parseUnits, formatUnits, erc20Abi } from "viem";
 import {
   fetchTrust,
   submitHeartbeat,
@@ -72,6 +73,27 @@ export function VaultView() {
   const [depositAsset, setDepositAsset] = useState<string>("");
   const [depositAmount, setDepositAmount] = useState<string>("");
   const [depositTxHash, setDepositTxHash] = useState<`0x${string}` | undefined>(undefined);
+
+  const selectedAsset = realTrust?.assets.find((a) => a.symbol === depositAsset);
+  const liveToken = realTrust?.liveBalances.find((b) => b.token.symbol === depositAsset)?.token;
+  const tokenDecimals = liveToken?.decimals ?? (depositAsset === "USDG" || depositAsset === "USDC" ? 6 : 18);
+
+  const { data: userTokenBalanceRaw } = useReadContract({
+    address: (selectedAsset?.token_address && selectedAsset.token_address !== "0x0000000000000000000000000000000000000000")
+      ? (selectedAsset.token_address as `0x${string}`)
+      : undefined,
+    abi: erc20Abi,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    chainId: ROBINHOOD_CHAIN_ID,
+    query: {
+      enabled: !!address && !!selectedAsset?.token_address && selectedAsset.token_address !== "0x0000000000000000000000000000000000000000",
+    },
+  });
+
+  const userTokenBalance = userTokenBalanceRaw !== undefined
+    ? formatUnits(userTokenBalanceRaw, tokenDecimals)
+    : undefined;
 
   const { writeContractAsync } = useWriteContract();
   const { data: depositReceipt, isLoading: depositWaiting } =
@@ -170,24 +192,23 @@ export function VaultView() {
     setBusy(true);
     setError("");
     try {
-      // Parse amount with 18 decimals (standard ERC-20)
-      const decimals = 18n;
-      const amountWei = BigInt(Math.floor(amtNum * 1e6)) * (10n ** (decimals - 6n));
+      // Parse amount with exact token decimals (e.g. 6 for USDG, 18 for equities)
+      const amountWei = parseUnits(depositAmount.trim(), tokenDecimals);
+
+      // Pre-check wallet balance to prevent reverted simulation
+      if (userTokenBalanceRaw !== undefined && userTokenBalanceRaw < amountWei) {
+        setError(
+          `Insufficient ${depositAsset} balance. Your connected wallet holds ${
+            userTokenBalance ?? "0"
+          } ${depositAsset}. Acquire or transfer ${depositAsset} to your wallet before depositing.`
+        );
+        setBusy(false);
+        return;
+      }
 
       const txHash = await writeContractAsync({
         address: assetInfo.token_address as `0x${string}`,
-        abi: [
-          {
-            name: "transfer",
-            type: "function",
-            stateMutability: "nonpayable",
-            inputs: [
-              { name: "to", type: "address" },
-              { name: "amount", type: "uint256" },
-            ],
-            outputs: [{ name: "", type: "bool" }],
-          },
-        ],
+        abi: erc20Abi,
         functionName: "transfer",
         args: [vault.vaultAddress as `0x${string}`, amountWei],
         chainId: ROBINHOOD_CHAIN_ID,
@@ -849,7 +870,36 @@ export function VaultView() {
             </div>
 
             <div className="deposit-field">
-              <label className="deposit-label" htmlFor="deposit-amount">Amount</label>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                <label className="deposit-label" htmlFor="deposit-amount" style={{ marginBottom: 0 }}>
+                  Amount
+                </label>
+                {userTokenBalance !== undefined && (
+                  <span style={{ fontFamily: "var(--mono)", fontSize: "11px", color: "var(--ink)", opacity: 0.8 }}>
+                    Wallet: <strong>{Number(userTokenBalance).toLocaleString(undefined, { maximumFractionDigits: 4 })}</strong> {depositAsset}
+                    {Number(userTokenBalance) > 0 && (
+                      <button
+                        type="button"
+                        style={{
+                          marginLeft: "8px",
+                          background: "none",
+                          border: "none",
+                          color: "var(--ink)",
+                          textDecoration: "underline",
+                          cursor: "pointer",
+                          fontFamily: "inherit",
+                          fontSize: "11px",
+                          padding: 0,
+                          fontWeight: 700,
+                        }}
+                        onClick={() => setDepositAmount(userTokenBalance)}
+                      >
+                        MAX
+                      </button>
+                    )}
+                  </span>
+                )}
+              </div>
               <input
                 id="deposit-amount"
                 className="deposit-input"
@@ -860,6 +910,11 @@ export function VaultView() {
                 value={depositAmount}
                 onChange={(e) => setDepositAmount(e.target.value)}
               />
+              {userTokenBalanceRaw !== undefined && userTokenBalanceRaw === 0n && (
+                <p style={{ fontSize: "11px", color: "#b91c1c", marginTop: "6px" }}>
+                  Your connected wallet has 0 {depositAsset} on Robinhood Chain. You must fund your wallet with {depositAsset} first before depositing.
+                </p>
+              )}
             </div>
 
             <div className="deposit-destination">
