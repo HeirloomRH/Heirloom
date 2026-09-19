@@ -78,10 +78,33 @@ export function Builder() {
   const [typed, setTyped] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [successData, setSuccessData] = useState<{ id: string; name: string; vaultAddress: string } | null>(null);
+  const [countdown, setCountdown] = useState(3);
 
   useEffect(() => {
     document.getElementById("builder-heading")?.focus();
   }, [step]);
+
+  useEffect(() => {
+    if (!successData) return;
+
+    if (countdown <= 0) {
+      navigate({ to: "/vault", search: { id: successData.id } });
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setCountdown((c) => c - 1);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [successData, countdown, navigate]);
+
+  const goToVault = () => {
+    if (successData) {
+      navigate({ to: "/vault", search: { id: successData.id } });
+    }
+  };
 
   const total = allocations.reduce((s, a) => s + a.weight, 0);
 
@@ -183,7 +206,13 @@ export function Builder() {
       };
       saveVault(v);
 
-      navigate({ to: "/vault", search: { id: res.trust.id } });
+      setSuccessData({
+        id: res.trust.id,
+        name: res.trust.name,
+        vaultAddress: res.trust.vaultAddress,
+      });
+      setCountdown(3);
+      setBusy(false);
     } catch (err: any) {
       setError(err.message || "Failed to create trust on Robinhood Chain. Please try again.");
       setBusy(false);
@@ -751,6 +780,38 @@ export function Builder() {
             <div className="dialog-actions">
               <button className="button primary" onClick={() => setError("")}>
                 Got it
+              </button>
+            </div>
+          </div>
+        </Dialog>
+      )}
+
+      {/* Success Modal — auto-dismisses after 3 seconds to the new vault */}
+      {successData && (
+        <Dialog title="Trust Sealed On-Chain" onClose={goToVault}>
+          <div className="dialog-body">
+            <div className="flex items-start gap-3">
+              <div style={{ background: "#d4ede4", borderRadius: "50%", padding: "6px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <Check size={20} className="text-emerald-700" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <h4 style={{ margin: "0 0 6px 0", fontSize: "16px", color: "var(--ink)", fontWeight: 600 }}>
+                  {successData.name}
+                </h4>
+                <p className="text-sm leading-relaxed" style={{ color: "#6a5e4d", margin: "0 0 12px 0" }}>
+                  Your trust has been successfully created and sealed on Robinhood Chain with dedicated on-chain vault address:
+                </p>
+                <div style={{ background: "#f7f3ec", border: "1px solid var(--line)", borderRadius: "4px", padding: "8px 12px", fontFamily: "var(--mono)", fontSize: "11px", wordBreak: "break-all", color: "var(--ink)" }}>
+                  {successData.vaultAddress}
+                </div>
+                <p className="field-hint" style={{ marginTop: "14px", fontSize: "11px", color: "#8a7c68" }}>
+                  Opening your live vault in {countdown}s…
+                </p>
+              </div>
+            </div>
+            <div className="dialog-actions" style={{ marginTop: "20px" }}>
+              <button className="button primary" onClick={goToVault}>
+                View Vault Now <ArrowRight size={14} />
               </button>
             </div>
           </div>
