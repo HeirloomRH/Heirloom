@@ -1274,6 +1274,128 @@
   color: var(--ink);
   line-height: 1.6;
 }
+
+/* Contract Address Badge (CA) */
+.ca-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+.ca-badge-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ca-badge-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ca-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+}
+.ca-btn:active {
+  transform: scale(0.97);
+}
+
+/* Light Theme (Hero & Page) */
+.ca-badge-light {
+  background: #eae4d9;
+  border: 1px solid #d5cbbe;
+  color: #152a3b;
+}
+.ca-badge-light .ca-badge-tag {
+  background: #152c41;
+  color: #f1ede5;
+  font-weight: 700;
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  letter-spacing: 0.06em;
+}
+.ca-badge-light .ca-badge-address {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: #6a5e4d;
+  font-weight: 500;
+}
+.ca-badge-light .ca-btn {
+  background: #ded7cb;
+  border: 1px solid #c9beae;
+  color: #152a3b;
+}
+.ca-badge-light .ca-btn:hover {
+  background: #d4ccbe;
+}
+
+/* Dark Theme (Footer) */
+.ca-badge-dark {
+  background: #1b2633;
+  border: 1px solid #2d3e52;
+  color: #d4c8b5;
+}
+.ca-badge-dark .ca-badge-tag {
+  background: #326b99;
+  color: #f1ede5;
+  font-weight: 700;
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  letter-spacing: 0.06em;
+}
+.ca-badge-dark .ca-badge-address {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: #9bb3c7;
+  font-weight: 500;
+}
+.ca-badge-dark .ca-btn {
+  background: #233346;
+  border: 1px solid #334a63;
+  color: #d4c8b5;
+}
+.ca-badge-dark .ca-btn:hover {
+  background: #2e435c;
+  color: #f1ede5;
+}
+
+.footer-link-button {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  display: inline;
+  transition: color 0.15s ease;
+}
+.footer-link-button:hover {
+  color: #f1ede5;
+}
+.footer-ca-wrap {
+  margin-top: 20px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
 .docs-page {
   padding-top: 47px;
   padding-bottom: 80px;

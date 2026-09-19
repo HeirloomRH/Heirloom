@@ -19,6 +19,8 @@ import {
   ReferenceNetwork,
   HeroHeading,
 } from "./reference-motion";
+import { ContractAddressBadge } from "./contract-address-badge";
+
 export default function Home() {
   return (
     <ReferenceMotion>
@@ -36,6 +38,9 @@ export default function Home() {
             <Link className="hero-sample" to="/vault" search={{ id: "sample" }}>
               Explore the sample workspace ↗
             </Link>
+            <div style={{ marginTop: "18px" }}>
+              <ContractAddressBadge theme="light" />
+            </div>
           </div>
         </div>
         <ReferenceHero />
