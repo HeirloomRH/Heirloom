@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
+import { useAccountModal, useConnectModal } from "@rainbow-me/rainbowkit";
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -42,7 +43,7 @@ import {
   dateLabel,
   type Vault,
 } from "@/lib/heirloom/vault";
-import { ConnectButton } from "../wallet/ConnectButton";
+
 
 export function VaultView() {
   const search = useSearch({ strict: false }) as { id?: string };
@@ -51,6 +52,8 @@ export function VaultView() {
 
   const { address, isConnected } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
+  const { openAccountModal } = useAccountModal();
+  const { openConnectModal } = useConnectModal();
 
   const [vault, setVault] = useState<Vault | null>(null);
   const [realTrust, setRealTrust] = useState<TrustResponse | null>(null);
@@ -649,12 +652,28 @@ export function VaultView() {
               ) : isBeneficiary ? (
                 <span className="text-blue-400 font-medium">You are the Beneficiary</span>
               ) : (
-                "Connect wallet to check in or claim"
+                "Connect your wallet to check in or claim"
               )}
             </p>
 
-            <div className="mt-2">
-              <ConnectButton className="w-full justify-center" />
+            <div className="mt-3">
+              {isConnected && address ? (
+                <button
+                  type="button"
+                  onClick={openAccountModal}
+                  className="button secondary w-full justify-center font-mono text-xs"
+                >
+                  {address.slice(0, 6)}…{address.slice(-4)}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={openConnectModal}
+                  className="button primary w-full justify-center"
+                >
+                  Connect Wallet
+                </button>
+              )}
             </div>
           </div>
         </aside>
