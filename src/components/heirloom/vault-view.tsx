@@ -260,9 +260,8 @@ export function VaultView() {
   if (!vault) {
     return (
       <div className="shell">
-        <DemoNotice />
         <div className="empty-state">
-          <h1 className="product-title">This trust isn’t here.</h1>
+          <h1 className="product-title">This trust isn't here.</h1>
           <p>{error || "It may not exist, or the backend is unreachable."}</p>
           <Link className="button primary" to="/app">
             Back to workspace <ArrowLeft size={15} />
@@ -288,7 +287,6 @@ export function VaultView() {
 
   return (
     <div className="shell">
-      <DemoNotice />
 
       <div className="product-breadcrumb">
         <Link to="/app">
@@ -351,68 +349,37 @@ export function VaultView() {
         </div>
       </div>
 
-      {notice && (
-        <div className="success-message" role="status">
-          <Check size={15} />
-          {notice}
-        </div>
-      )}
-
-      {error && (
-        <div className="error-message" role="alert">
-          <AlertTriangle size={15} />
-          {error}
-        </div>
-      )}
-
-      {/* Dedicated On-Chain Vault Banner */}
+      {/* Vault Address Card — on-brand design */}
       {vault.vaultAddress && (
-        <div className="my-4 rounded-xl border border-[#3a3229] bg-[#161310] p-4 text-xs">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <ShieldCheck size={16} className="text-emerald-400" />
-                <span className="font-semibold uppercase tracking-wider text-[#e4ded6]">
-                  Dedicated On-Chain Vault Address
-                </span>
-                <span className="rounded bg-[#25201b] px-1.5 py-0.5 text-[10px] text-[#8d7c68]">
-                  Vault #{vault.vaultIndex ?? 1}
-                </span>
-              </div>
-              <p className="mt-1 font-mono text-xs text-[#c4bcaf] break-all">
-                {vault.vaultAddress}
-              </p>
+        <div className="vault-address-card">
+          <div className="vault-address-card-header">
+            <div className="vault-address-card-title">
+              <ShieldCheck size={15} />
+              <span>Vault Address</span>
+              <span className="vault-address-badge">#{vault.vaultIndex ?? 1}</span>
             </div>
-
-            <div className="flex items-center gap-2 self-start sm:self-auto">
+            <div className="vault-address-card-actions">
               <button
+                className="button secondary"
                 onClick={() => copyAddress(vault.vaultAddress!)}
-                className="inline-flex items-center gap-1 rounded-lg border border-[#352f28] bg-[#201b17] px-2.5 py-1.5 text-xs text-[#e4ded6] transition hover:bg-[#2c251f]"
               >
-                {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                <span>{copied ? "Copied" : "Copy Address"}</span>
+                {copied ? <Check size={13} /> : <Copy size={13} />}
+                {copied ? "Copied" : "Copy"}
               </button>
-
               <a
                 href={`${ROBINHOOD_EXPLORER_URL}/address/${vault.vaultAddress}`}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1 rounded-lg border border-[#352f28] bg-[#201b17] px-2.5 py-1.5 text-xs text-[#c4a47c] transition hover:bg-[#2c251f]"
+                className="button secondary"
               >
-                <span>Blockscout</span>
-                <ExternalLink size={12} />
+                <ExternalLink size={13} /> Explorer
               </a>
             </div>
           </div>
-
+          <p className="vault-address-mono">{vault.vaultAddress}</p>
           {!vault.corpusFunded && (
-            <div className="mt-3 rounded-lg border border-amber-800/40 bg-amber-950/20 p-3 text-amber-200">
-              <p className="font-medium text-amber-100">
-                To activate this trust:
-              </p>
-              <p className="mt-0.5 text-[11px] text-amber-300/80">
-                Transfer your chosen tokenized stocks (`SPCX`, `AAPL`, `NVDA`, `TSLA`) or `USDG` directly to the vault address above. Once confirmed, click "Refresh" to verify.
-              </p>
+            <div className="vault-address-funding-hint">
+              <strong>Activate this trust:</strong> Transfer your tokenized stocks (SPCX, AAPL, NVDA, TSLA) or USDG directly to the vault address above, then click <em>Refresh</em> to confirm.
             </div>
           )}
         </div>
@@ -424,7 +391,7 @@ export function VaultView() {
           <div className="portfolio-summary">
             <div className="spread">
               <span className="eyebrow">ON-CHAIN HOLDINGS & RESERVES</span>
-              <span className="micro">Robinhood Chain (4663)</span>
+              <span className="micro">Robinhood Chain</span>
             </div>
 
             {realTrust ? (
@@ -664,7 +631,7 @@ export function VaultView() {
                 onClick={handleHeartbeat}
                 disabled={busy}
               >
-                <Heart size={14} /> {busy ? "Signing..." : "Check In (Gasless EIP-712)"}
+                <Heart size={14} /> {busy ? "Signing..." : "Check In (Gasless)"}
               </button>
             )}
           </div>
@@ -696,8 +663,46 @@ export function VaultView() {
       {/* Decrypted Letter Dialog */}
       {dialog === "letter" && unlockedLetter && (
         <Dialog title="Letter to the Beneficiary" onClose={() => setDialog("")}>
-          <div className="p-4">
-            <p className="whitespace-pre-line text-sm text-[#f5efe6]">{unlockedLetter}</p>
+          <div className="dialog-body">
+            <p className="whitespace-pre-line text-sm" style={{ color: "var(--ink)" }}>{unlockedLetter}</p>
+          </div>
+        </Dialog>
+      )}
+
+      {/* Success Notice Modal */}
+      {notice && (
+        <Dialog title="Success" onClose={() => setNotice("")}>
+          <div className="dialog-body">
+            <div className="flex items-start gap-3">
+              <Check size={20} className="text-emerald-500 mt-0.5 shrink-0" />
+              <p className="text-sm leading-relaxed" style={{ color: "var(--ink)" }}>
+                {notice}
+              </p>
+            </div>
+            <div className="dialog-actions">
+              <button className="button primary" onClick={() => setNotice("")}>
+                Done
+              </button>
+            </div>
+          </div>
+        </Dialog>
+      )}
+
+      {/* Error Modal */}
+      {error && (
+        <Dialog title="Something went wrong" onClose={() => setError("")}>
+          <div className="dialog-body">
+            <div className="flex items-start gap-3">
+              <AlertTriangle size={20} className="text-rose-500 mt-0.5 shrink-0" />
+              <p className="text-sm leading-relaxed" style={{ color: "var(--ink)" }}>
+                {error}
+              </p>
+            </div>
+            <div className="dialog-actions">
+              <button className="button secondary" onClick={() => setError("")}>
+                Dismiss
+              </button>
+            </div>
           </div>
         </Dialog>
       )}

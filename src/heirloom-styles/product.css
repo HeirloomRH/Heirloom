@@ -1166,9 +1166,73 @@
 .dialog-actions .button {
   font-size: 10px;
 }
+.dialog-body {
+  padding: 4px 0 8px;
+}
 .danger {
   background: #a1543c;
   color: #fff;
+}
+/* Vault Address Card — on-brand design */
+.vault-address-card {
+  margin: 20px 0;
+  padding: 20px 22px;
+  border: 1px solid var(--line);
+  background: #f7f3ec;
+  border-radius: 4px;
+}
+.vault-address-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.vault-address-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.vault-address-badge {
+  background: #e4ddd3;
+  color: #8a7a66;
+  border: 1px solid #d5cdc2;
+  border-radius: 3px;
+  padding: 2px 7px;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+.vault-address-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.vault-address-mono {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: #6b5f4e;
+  word-break: break-all;
+  line-height: 1.6;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  margin-top: 4px;
+}
+.vault-address-funding-hint {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px solid #d8c89e;
+  background: #fdf6e8;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: #6d5b34;
 }
 .docs-page {
   padding-top: 47px;
