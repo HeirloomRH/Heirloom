@@ -6,6 +6,7 @@
 @import "./heirloom-styles/reference.css";
 @import "./heirloom-styles/brand.css";
 @import "./heirloom-styles/handbook.css";
+@import "./heirloom-styles/whitepaper.css";
 @import "@rainbow-me/rainbowkit/styles.css";
 
 @custom-variant dark (&:is(.dark *));

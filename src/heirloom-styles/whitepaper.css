@@ -1,0 +1,416 @@
+/* ==========================================================================
+   Heirloom Protocol Whitepaper Styles
+   Parchment & Ink Academic Typesetting
+   ========================================================================== */
+
+.whitepaper-page {
+  padding: 40px 0 100px;
+  color: var(--ink, #1b242c);
+  font-family: var(--sans, "Inter", sans-serif);
+}
+
+.whitepaper-meta-header {
+  border-bottom: 1px solid var(--line, #dfd7cc);
+  padding-bottom: 28px;
+  margin-bottom: 40px;
+}
+
+.whitepaper-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.wp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-family: var(--mono, "JetBrains Mono", monospace);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: #ebe5db;
+  color: #5c4e3b;
+  border: 1px solid #d9cfbe;
+}
+
+.wp-badge.primary {
+  background: #152a3b;
+  color: #f4efeb;
+  border-color: #152a3b;
+}
+
+.wp-badge.accent {
+  background: #fdf5ea;
+  color: #b8621b;
+  border-color: #f1cfb3;
+}
+
+.whitepaper-title {
+  font-family: var(--serif, "Libre Caslon Display", Georgia, serif);
+  font-size: 46px;
+  line-height: 1.15;
+  letter-spacing: -1.5px;
+  color: #152a3b;
+  margin: 0 0 16px;
+  max-width: 900px;
+}
+
+.whitepaper-subtitle {
+  font-size: 18px;
+  line-height: 1.55;
+  color: #615343;
+  max-width: 820px;
+  margin: 0 0 24px;
+}
+
+.whitepaper-authors {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  font-size: 12px;
+  color: #7b6d5c;
+  padding-top: 18px;
+  border-top: 1px dashed var(--line, #dfd7cc);
+}
+
+.whitepaper-authors-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.whitepaper-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wp-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid #cfc5b4;
+  background: #fdfaf6;
+  color: #3b3226;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.wp-action-btn:hover {
+  background: #eee8de;
+  border-color: #b5a995;
+}
+
+/* Layout: Sidebar + Main Content */
+.whitepaper-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 50px;
+  position: relative;
+}
+
+@media (max-width: 960px) {
+  .whitepaper-layout {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+}
+
+/* Table of Contents Sticky Sidebar */
+.whitepaper-toc {
+  position: sticky;
+  top: 90px;
+  align-self: start;
+  background: #fdfbf7;
+  border: 1px solid #e2dacd;
+  border-radius: 6px;
+  padding: 20px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+}
+
+@media (max-width: 960px) {
+  .whitepaper-toc {
+    position: static;
+    max-height: none;
+  }
+}
+
+.toc-heading {
+  font-size: 11px;
+  font-family: var(--mono, "JetBrains Mono", monospace);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #8c7d6b;
+  margin: 0 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e8e0d4;
+}
+
+.toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.toc-item {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.toc-item a {
+  display: block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: #574b3d;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.toc-item a:hover {
+  background: #eee7dc;
+  color: #152a3b;
+}
+
+.toc-item a.active {
+  background: #152a3b;
+  color: #faf7f2;
+  font-weight: 500;
+}
+
+.toc-sublist {
+  list-style: none;
+  margin: 4px 0 4px 12px;
+  padding: 0;
+  border-left: 1px solid #e0d7c9;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.toc-sublist .toc-item a {
+  font-size: 11.5px;
+  padding: 2px 6px;
+  color: #7a6c5b;
+}
+
+/* Content Typography & Structure */
+.whitepaper-content {
+  line-height: 1.75;
+  font-size: 15px;
+  color: #27211b;
+}
+
+.abstract-box {
+  background: #fdfbf7;
+  border: 1px solid #dec7a5;
+  border-left: 4px solid #152a3b;
+  border-radius: 4px;
+  padding: 24px 28px;
+  margin-bottom: 40px;
+}
+
+.abstract-title {
+  font-family: var(--serif, "Libre Caslon Display", Georgia, serif);
+  font-size: 20px;
+  color: #152a3b;
+  margin: 0 0 12px;
+}
+
+.abstract-text {
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: #4a3e31;
+  margin: 0;
+}
+
+.wp-section {
+  margin-bottom: 50px;
+  padding-top: 20px;
+  border-top: 1px solid #e6ded2;
+}
+
+.wp-section:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.wp-section-num {
+  font-family: var(--mono, monospace);
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: #8c7e6e;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.wp-section-title {
+  font-family: var(--serif, "Libre Caslon Display", Georgia, serif);
+  font-size: 30px;
+  line-height: 1.25;
+  letter-spacing: -0.8px;
+  color: #152a3b;
+  margin: 0 0 18px;
+}
+
+.wp-subsection-title {
+  font-family: var(--serif, "Libre Caslon Display", Georgia, serif);
+  font-size: 21px;
+  letter-spacing: -0.4px;
+  color: #1b354c;
+  margin: 28px 0 12px;
+}
+
+.wp-paragraph {
+  margin-bottom: 16px;
+  color: #2f2720;
+}
+
+/* Callout & Spec Boxes */
+.wp-callout {
+  background: #fbf9f4;
+  border: 1px solid #ded5c7;
+  border-radius: 5px;
+  padding: 18px 22px;
+  margin: 22px 0;
+}
+
+.wp-callout.highlight {
+  background: #f4f8fb;
+  border-color: #bad2e4;
+}
+
+.wp-callout-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #152a3b;
+  margin-bottom: 8px;
+}
+
+.wp-callout-text {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: #463d33;
+  margin: 0;
+}
+
+/* Spec / Math blocks */
+.wp-math {
+  background: #152a3b;
+  color: #ecf3f9;
+  padding: 16px 20px;
+  border-radius: 5px;
+  font-family: var(--mono, "JetBrains Mono", monospace);
+  font-size: 13px;
+  overflow-x: auto;
+  margin: 20px 0;
+  border: 1px solid #233e54;
+}
+
+.wp-math-caption {
+  font-size: 11px;
+  color: #8fa7be;
+  margin-top: 6px;
+}
+
+/* Tables */
+.wp-table-wrap {
+  overflow-x: auto;
+  margin: 24px 0;
+  border: 1px solid #dcd3c4;
+  border-radius: 5px;
+  background: #fefefe;
+}
+
+.wp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+.wp-table th {
+  background: #f1ebd02b;
+  background-color: #f3ede2;
+  color: #152a3b;
+  font-weight: 600;
+  padding: 12px 16px;
+  border-bottom: 1px solid #dcd3c4;
+}
+
+.wp-table td {
+  padding: 11px 16px;
+  border-bottom: 1px solid #eee7dc;
+  color: #3b3228;
+}
+
+.wp-table tr:last-child td {
+  border-bottom: none;
+}
+
+.wp-table tr:hover td {
+  background: #faf7f2;
+}
+
+/* Architecture ASCII/Diagram block */
+.wp-diagram {
+  background: #f5f0e6;
+  border: 1px solid #d7cbb8;
+  border-radius: 6px;
+  padding: 20px;
+  font-family: var(--mono, monospace);
+  font-size: 12px;
+  line-height: 1.4;
+  color: #2b2319;
+  overflow-x: auto;
+  margin: 24px 0;
+  white-space: pre;
+}
+
+/* Feature grid */
+.wp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+  margin: 24px 0;
+}
+
+.wp-card {
+  background: #fdfbf7;
+  border: 1px solid #dfd6c7;
+  border-radius: 5px;
+  padding: 18px;
+}
+
+.wp-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #152a3b;
+  margin: 0 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wp-card-text {
+  font-size: 12.5px;
+  color: #5c5042;
+  line-height: 1.55;
+  margin: 0;
+}
