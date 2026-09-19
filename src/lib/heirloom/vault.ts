@@ -1,5 +1,5 @@
 export type Allocation = { symbol: string; name: string; weight: number };
-export type Release = { date: string; percent: number };
+export type Release = { date: string; percent: number; id?: string; claimed?: boolean };
 export type Vault = {
   id: string;
   name: string;
