@@ -20,8 +20,9 @@ import {
   RefreshCw,
   Coins,
   AlertTriangle,
+  SendHorizonal,
 } from "lucide-react";
-import { useAccount, useSignTypedData } from "wagmi";
+import { useAccount, useSignTypedData, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import {
   fetchTrust,
   submitHeartbeat,
@@ -66,6 +67,15 @@ export function VaultView() {
   const [copied, setCopied] = useState(false);
   const [unlockedLetter, setUnlockedLetter] = useState<string | null>(null);
   const [claimTx, setClaimTx] = useState<string | null>(null);
+
+  // Deposit flow state
+  const [depositAsset, setDepositAsset] = useState<string>("");
+  const [depositAmount, setDepositAmount] = useState<string>("");
+  const [depositTxHash, setDepositTxHash] = useState<`0x${string}` | undefined>(undefined);
+
+  const { writeContractAsync } = useWriteContract();
+  const { data: depositReceipt, isLoading: depositWaiting } =
+    useWaitForTransactionReceipt({ hash: depositTxHash, query: { enabled: !!depositTxHash } });
 
   const loadData = async () => {
     setLoading(true);
@@ -132,6 +142,80 @@ export function VaultView() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  // ERC-20 Deposit Handler
+  const handleDeposit = async () => {
+    if (!realTrust || !vault?.vaultAddress) return;
+    if (!address) {
+      setError("Connect your wallet to deposit assets.");
+      return;
+    }
+    if (!depositAsset) {
+      setError("Please select an asset to deposit.");
+      return;
+    }
+    const amtNum = parseFloat(depositAmount);
+    if (!depositAmount || isNaN(amtNum) || amtNum <= 0) {
+      setError("Please enter a valid amount greater than 0.");
+      return;
+    }
+
+    // Find the token contract address from realTrust.assets
+    const assetInfo = realTrust.assets.find((a) => a.symbol === depositAsset);
+    if (!assetInfo?.token_address || assetInfo.token_address === "0x0000000000000000000000000000000000000000") {
+      setError(`No contract address found for ${depositAsset}. Contact support.`);
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+    try {
+      // Parse amount with 18 decimals (standard ERC-20)
+      const decimals = 18n;
+      const amountWei = BigInt(Math.floor(amtNum * 1e6)) * (10n ** (decimals - 6n));
+
+      const txHash = await writeContractAsync({
+        address: assetInfo.token_address as `0x${string}`,
+        abi: [
+          {
+            name: "transfer",
+            type: "function",
+            stateMutability: "nonpayable",
+            inputs: [
+              { name: "to", type: "address" },
+              { name: "amount", type: "uint256" },
+            ],
+            outputs: [{ name: "", type: "bool" }],
+          },
+        ],
+        functionName: "transfer",
+        args: [vault.vaultAddress as `0x${string}`, amountWei],
+        chainId: ROBINHOOD_CHAIN_ID,
+      });
+
+      setDepositTxHash(txHash);
+      setDialog("deposit_pending");
+    } catch (e: any) {
+      const msg = e?.shortMessage || e?.message || "Transaction failed or was rejected.";
+      setError(msg);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // When deposit receipt lands, mark success
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (depositReceipt && dialog === "deposit_pending") {
+      setDialog("deposit_success");
+      setDepositAmount("");
+      // Trigger fund verification after a short delay
+      setTimeout(() => {
+        verifyFunding(realTrust!.trust.id).catch(() => {});
+        loadData();
+      }, 2000);
+    }
+  }, [depositReceipt]);
 
   // Gasless EIP-712 Heartbeat Check-In
   const handleHeartbeat = async () => {
@@ -377,12 +461,26 @@ export function VaultView() {
               >
                 <ExternalLink size={13} /> Explorer
               </a>
+              {realTrust && (
+                <button
+                  className="button primary"
+                  onClick={() => {
+                    // Pre-select first asset if none selected
+                    if (!depositAsset && realTrust.assets.length > 0) {
+                      setDepositAsset(realTrust.assets[0].symbol);
+                    }
+                    setDialog("deposit");
+                  }}
+                >
+                  <SendHorizonal size={13} /> Deposit
+                </button>
+              )}
             </div>
           </div>
           <p className="vault-address-mono">{vault.vaultAddress}</p>
           {!vault.corpusFunded && (
             <div className="vault-address-funding-hint">
-              <strong>Activate this trust:</strong> Transfer your tokenized stocks (SPCX, AAPL, NVDA, TSLA) or USDG directly to the vault address above, then click <em>Refresh</em> to confirm.
+              <strong>Activate this trust:</strong> Deposit tokenized assets directly to this vault address to fund it. Use the <em>Deposit</em> button above, or transfer manually from your wallet.
             </div>
           )}
         </div>
@@ -720,6 +818,126 @@ export function VaultView() {
             <div className="dialog-actions">
               <button className="button secondary" onClick={() => setError("")}>
                 Dismiss
+              </button>
+            </div>
+          </div>
+        </Dialog>
+      )}
+
+      {/* Deposit Form Modal */}
+      {dialog === "deposit" && realTrust && vault?.vaultAddress && (
+        <Dialog title="Deposit Assets" onClose={() => setDialog("")}>
+          <div className="dialog-body">
+            <p className="text-sm" style={{ color: "var(--ink)", marginBottom: "1rem" }}>
+              Select an asset and amount to deposit into this vault on Robinhood Chain. Your wallet will prompt you to sign the transaction.
+            </p>
+
+            <div className="deposit-field">
+              <label className="deposit-label" htmlFor="deposit-asset">Asset</label>
+              <select
+                id="deposit-asset"
+                className="deposit-select"
+                value={depositAsset}
+                onChange={(e) => setDepositAsset(e.target.value)}
+              >
+                {realTrust.assets.map((a) => (
+                  <option key={a.symbol} value={a.symbol}>
+                    {a.symbol}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="deposit-field">
+              <label className="deposit-label" htmlFor="deposit-amount">Amount</label>
+              <input
+                id="deposit-amount"
+                className="deposit-input"
+                type="number"
+                min="0"
+                step="any"
+                placeholder="e.g. 10.5"
+                value={depositAmount}
+                onChange={(e) => setDepositAmount(e.target.value)}
+              />
+            </div>
+
+            <div className="deposit-destination">
+              <span className="deposit-destination-label">To vault</span>
+              <span className="deposit-destination-address">{vault.vaultAddress}</span>
+            </div>
+
+            <div className="dialog-actions">
+              <button
+                className="button secondary"
+                onClick={() => setDialog("")}
+                disabled={busy}
+              >
+                Cancel
+              </button>
+              <button
+                className="button primary"
+                onClick={handleDeposit}
+                disabled={busy || !depositAsset || !depositAmount}
+              >
+                {busy ? "Sending…" : <><SendHorizonal size={14} /> Send Deposit</>}
+              </button>
+            </div>
+          </div>
+        </Dialog>
+      )}
+
+      {/* Deposit Pending Modal */}
+      {dialog === "deposit_pending" && (
+        <Dialog title="Transaction Submitted" onClose={() => {}}>
+          <div className="dialog-body">
+            <div className="deposit-pending-state">
+              <div className="deposit-spinner" />
+              <p className="text-sm" style={{ color: "var(--ink)" }}>
+                Your deposit transaction has been broadcast to Robinhood Chain. Waiting for confirmation…
+              </p>
+              {depositTxHash && (
+                <a
+                  href={`${ROBINHOOD_EXPLORER_URL}/tx/${depositTxHash}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="button secondary"
+                  style={{ marginTop: "0.75rem", fontSize: "0.78rem" }}
+                >
+                  <ExternalLink size={12} /> View Transaction
+                </a>
+              )}
+            </div>
+          </div>
+        </Dialog>
+      )}
+
+      {/* Deposit Success Modal */}
+      {dialog === "deposit_success" && (
+        <Dialog title="Deposit Confirmed" onClose={() => setDialog("")}>
+          <div className="dialog-body">
+            <div className="deposit-success-state">
+              <div className="success-badge" style={{ margin: "0 auto 1rem" }}>
+                <Check size={22} />
+              </div>
+              <p className="text-sm" style={{ color: "var(--ink)", textAlign: "center", marginBottom: "0.75rem" }}>
+                Your deposit of <strong>{depositAsset}</strong> was confirmed on Robinhood Chain. Your vault balances are being refreshed.
+              </p>
+              {depositTxHash && (
+                <a
+                  href={`${ROBINHOOD_EXPLORER_URL}/tx/${depositTxHash}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="button secondary"
+                  style={{ fontSize: "0.78rem" }}
+                >
+                  <ExternalLink size={12} /> View on Explorer
+                </a>
+              )}
+            </div>
+            <div className="dialog-actions">
+              <button className="button primary" onClick={() => { setDialog(""); setDepositTxHash(undefined); }}>
+                Done
               </button>
             </div>
           </div>
