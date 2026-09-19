@@ -1125,17 +1125,24 @@
   font-size: 10px;
 }
 .dialog {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  margin: 0 !important;
   max-width: 480px;
   width: calc(100% - 32px);
   padding: 28px;
   background: var(--paper);
   border: 1px solid #d7c6a9;
+  border-radius: 6px;
   color: var(--ink);
-  box-shadow: 0 30px 90px #0004;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.35);
+  z-index: 99999;
 }
 .dialog::backdrop {
-  background: #19130dbb;
-  backdrop-filter: blur(3px);
+  background: rgba(15, 23, 42, 0.65) !important;
+  backdrop-filter: blur(4px) !important;
 }
 .dialog-head {
   display: flex;

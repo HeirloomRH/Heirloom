@@ -272,7 +272,7 @@ export function Builder() {
                   </span>
                 </div>
                 <p className="field-hint">
-                  Sample assets only. No live prices or verified eligibility.
+                  Select token allocations for your trust portfolio.
                 </p>
                 <div className="asset-select">
                   {assets.map((a) => {
@@ -375,23 +375,6 @@ export function Builder() {
                   The intended receiving wallet. The address must be correct
                   before any vault is created.
                 </p>
-                <button
-                  type="button"
-                  className="text-link plain-button"
-                  onClick={() => {
-                    setBeneficiary("Emma");
-                    setWallet("0x1111111111111111111111111111111111111111");
-                  }}
-                >
-                  Use fictional demo beneficiary <ArrowRight size={13} />
-                </button>
-                <div className="form-callout">
-                  <Heart size={18} />
-                  <p>
-                    A real deployment will require verified eligibility for the
-                    creator and beneficiary.
-                  </p>
-                </div>
               </div>
             )}
             {step === 2 && (
@@ -596,49 +579,45 @@ export function Builder() {
                       <dt>Letter</dt>
                       <dd>{letter ? "Encrypted & sealed" : "Not added"}</dd>
                     </div>
-                  </dl>
-                  <p className="field-hint mono break-all">
-                    Beneficiary: {wallet}
-                  </p>
-
-                  {/* Grantor wallet — on-brand */}
-                  <div className="vault-address-card" style={{ marginTop: "16px" }}>
-                    <div className="vault-address-card-title" style={{ marginBottom: "10px" }}>
-                      <ShieldCheck size={13} />
-                      <span>Grantor Wallet (Creator)</span>
+                    <div>
+                      <dt>Beneficiary</dt>
+                      <dd className="mono break-all">{wallet}</dd>
                     </div>
-                    {address ? (
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="vault-address-mono" style={{ borderTop: "none", padding: 0, fontSize: "11px" }}>
-                          {address}
-                        </p>
-                        <span className="vault-address-badge" style={{ background: "#d4ede4", color: "#2d6a4f", borderColor: "#b7dbc8", whiteSpace: "nowrap" }}>
-                          Connected
-                        </span>
-                      </div>
-                    ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                        <button
-                          type="button"
-                          className="button primary"
-                          onClick={openConnectModal}
-                        >
-                          <Wallet size={13} /> Connect Wallet
+                    <div>
+                      <dt>Grantor</dt>
+                      <dd className="mono break-all">
+                        {address ? (
+                          <span style={{ color: "#152a3b", fontWeight: 600 }}>{address} (Connected)</span>
+                        ) : customGrantor ? (
+                          <span style={{ color: "#152a3b", fontWeight: 600 }}>{customGrantor}</span>
+                        ) : (
+                          <span style={{ color: "#a1543c" }}>Not connected</span>
+                        )}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  {!address && (
+                    <div style={{ marginTop: "12px", padding: "12px 14px", background: "#f0eae0", border: "1px solid #d8cbb8", borderRadius: "4px" }}>
+                      <p className="field-hint" style={{ margin: "0 0 8px 0" }}>Connect your wallet or enter creator address:</p>
+                      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                        <button type="button" className="button primary" onClick={openConnectModal} style={{ fontSize: "10px", padding: "6px 14px" }}>
+                          <Wallet size={12} /> Connect Wallet
                         </button>
-                        <p className="field-hint" style={{ margin: 0 }}>or paste your wallet address:</p>
                         <input
                           type="text"
                           placeholder="0x..."
                           value={customGrantor}
                           onChange={(e) => setCustomGrantor(e.target.value)}
                           className="mono"
+                          style={{ flex: 1, padding: "6px 10px", fontSize: "11px", background: "#fff", border: "1px solid #d8cbb8", borderRadius: "3px" }}
                           spellCheck={false}
                           autoComplete="off"
                           maxLength={42}
                         />
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
                   <div className="review-releases">
                     {schedule.map((r) => (
