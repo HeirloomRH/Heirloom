@@ -21,6 +21,8 @@ import {
   Coins,
   AlertTriangle,
   SendHorizonal,
+  LockOpen,
+  Calendar,
 } from "lucide-react";
 import { useAccount, useSignTypedData, useWriteContract, useWaitForTransactionReceipt, useReadContract } from "wagmi";
 import { parseUnits, formatUnits, erc20Abi } from "viem";
@@ -46,6 +48,22 @@ import {
   type Vault,
 } from "@/lib/heirloom/vault";
 
+
+function getRelTime(dateStr: string): string {
+  try {
+    const target = new Date(dateStr + "T00:00:00Z");
+    const now = new Date();
+    const diffDays = Math.ceil((target.getTime() - now.getTime()) / 86400000);
+    if (diffDays <= 0) return "Milestone reached";
+    if (diffDays < 30) return `in ${diffDays} days`;
+    const diffMonths = Math.ceil(diffDays / 30);
+    if (diffMonths < 12) return `in ${diffMonths} months`;
+    const diffYears = (diffDays / 365).toFixed(1);
+    return `in ~${diffYears.replace(".0", "")} years`;
+  } catch {
+    return "";
+  }
+}
 
 export function VaultView() {
   const search = useSearch({ strict: false }) as { id?: string };
@@ -121,8 +139,10 @@ export function VaultView() {
             weight: Math.round(a.target_allocation_bps / 100),
           })),
           schedule: data.vestingSchedules.map((s) => ({
+            id: s.id,
             date: s.unlock_timestamp.slice(0, 10),
             percent: Math.round(s.percentage_bps / 100),
+            claimed: s.claimed,
           })),
           mode: data.trust.isRevocable ? "revocable" : "irrevocable",
           heartbeat: Math.round(Number(data.trust.heartbeatWindowSeconds) / 86400),
@@ -640,42 +660,137 @@ export function VaultView() {
 
             {tab === "Schedule" && (
               <>
-                <h2>Good things, in their own time.</h2>
-                <p className="field-hint">
-                  Vesting cliffs unlock assets on predetermined milestone dates or upon succession.
+                <div className="spread panel-title">
+                  <h2>Good things, in their own time.</h2>
+                  <span className="micro">VESTING CLIFFS & TIMELINE</span>
+                </div>
+                <p className="field-hint" style={{ marginTop: "-6px", marginBottom: "16px" }}>
+                  Vesting cliffs unlock assets on predetermined milestone dates or immediately upon succession execution.
                 </p>
 
-                <div className="release-list">
+                {/* Multi-segment allocation line matching Portfolio design */}
+                <div className="allocation-line large" style={{ marginBottom: "22px" }}>
                   {vault.schedule.map((r, i) => {
                     const isPassed = new Date(r.date) <= new Date();
-                    const canClaim = (isPassed || isSuccessionTriggered) && isBeneficiary;
+                    return (
+                      <span
+                        key={r.date + i}
+                        style={{
+                          width: r.percent + "%",
+                          background: r.claimed
+                            ? "#059669"
+                            : isPassed
+                            ? "#10b981"
+                            : ["#9ea881", "#e0b182", "#a89cb9", "#8ea9af"][i % 4],
+                          opacity: r.claimed || isPassed ? 1 : 0.85,
+                        }}
+                        title={`Cliff 0${i + 1}: ${r.percent}% (${dateLabel(r.date)})`}
+                      />
+                    );
+                  })}
+                </div>
+
+                {/* Milestone Cards List */}
+                <div className="cliff-card-list">
+                  {vault.schedule.map((r, i) => {
+                    const isPassed = new Date(r.date) <= new Date();
+                    const isClaimed = !!r.claimed;
+                    const canClaim = (isPassed || isSuccessionTriggered) && isBeneficiary && !isClaimed;
+                    const fundedBalances = realTrust?.liveBalances.filter((b) => BigInt(b.balanceRaw) > 0n) || [];
+                    const claimTokenSymbol = fundedBalances[0]?.token.symbol || "USDG";
 
                     return (
-                      <div key={r.date} className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <span className="release-dot">{i + 1}</span>
-                          <div>
-                            <b>{dateLabel(r.date)}</b>
-                            <span className="block text-xs text-[#8d7c68]">
-                              Cliff {String(i + 1).padStart(2, "0")} · {r.percent}% of corpus
+                      <div
+                        key={r.id || r.date + i}
+                        className={`cliff-card ${isPassed || isClaimed ? "cliff-card-unlocked" : ""}`}
+                      >
+                        <div className="cliff-card-header">
+                          <div className="cliff-header-left">
+                            <span className="cliff-number-badge">
+                              Cliff {String(i + 1).padStart(2, "0")} · Milestone
                             </span>
+                            <h3 className="cliff-date-title">{dateLabel(r.date)}</h3>
+                            <span className="cliff-rel-time">
+                              {isClaimed
+                                ? "Transferred to beneficiary"
+                                : isPassed
+                                ? "Milestone reached (Unlocked)"
+                                : getRelTime(r.date)}
+                            </span>
+                          </div>
+
+                          <div className="cliff-header-right">
+                            {isClaimed ? (
+                              <span className="cliff-status-pill claimed">
+                                <Check size={13} /> Claimed
+                              </span>
+                            ) : canClaim ? (
+                              <button
+                                onClick={() => handleClaim(claimTokenSymbol, r.id)}
+                                disabled={busy}
+                                className="button primary"
+                                style={{ padding: "6px 14px", fontSize: "11px" }}
+                              >
+                                <Coins size={13} /> Claim Milestone
+                              </button>
+                            ) : isPassed ? (
+                              <span className="cliff-status-pill unlocked">
+                                <LockOpen size={13} /> Unlocked
+                              </span>
+                            ) : (
+                              <span className="cliff-status-pill locked">
+                                <LockKeyhole size={13} /> Locked
+                              </span>
+                            )}
                           </div>
                         </div>
 
-                        <div>
-                          {canClaim ? (
-                            <button
-                              onClick={() => handleClaim("USDG")}
-                              disabled={busy}
-                              className="inline-flex items-center gap-1 rounded bg-emerald-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-emerald-500"
-                            >
-                              <Coins size={12} /> Claim Tokens
-                            </button>
-                          ) : (
-                            <span className="text-xs font-medium text-[#8d7c68]">
-                              {isPassed ? "Unlocked" : "Locked"}
-                            </span>
-                          )}
+                        <div className="cliff-details-grid">
+                          <div className="cliff-metric-col">
+                            <span className="cliff-metric-label">Corpus Share</span>
+                            <strong className="cliff-metric-value">{r.percent}%</strong>
+                            <span className="cliff-metric-sub">of total trust assets</span>
+                          </div>
+
+                          <div className="cliff-metric-col">
+                            <span className="cliff-metric-label">Token Release</span>
+                            {fundedBalances.length > 0 ? (
+                              <div className="cliff-token-badges">
+                                {fundedBalances.map((b) => {
+                                  const totalAmt = parseFloat(b.balanceFormatted);
+                                  const cliffAmt = (totalAmt * r.percent) / 100;
+                                  return (
+                                    <span key={b.token.symbol} className="cliff-token-chip">
+                                      <AssetIcon symbol={b.token.symbol} className="w-4 h-4" />
+                                      <span>
+                                        <strong>
+                                          {cliffAmt.toLocaleString(undefined, {
+                                            maximumFractionDigits: 4,
+                                          })}
+                                        </strong>{" "}
+                                        {b.token.symbol}
+                                      </span>
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <span className="cliff-token-pending">
+                                {vault.amount > 0
+                                  ? `${money((vault.amount * r.percent) / 100)} (pending on-chain deposit)`
+                                  : "Pending on-chain deposit"}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="cliff-metric-col">
+                            <span className="cliff-metric-label">Release Trigger</span>
+                            <p className="cliff-trigger-text">
+                              {isPassed
+                                ? "Calendar milestone reached"
+                                : "Calendar unlock or upon Grantor succession execution"}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     );

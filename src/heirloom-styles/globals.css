@@ -4162,3 +4162,178 @@ a svg {
     fill: none;
   }
 }
+
+/* ── Vesting Schedule Cliffs ───────────────────────────── */
+.cliff-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 20px 0 30px;
+}
+
+.cliff-card {
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 6px;
+  padding: 22px 24px;
+  transition: all 0.2s ease;
+}
+
+.cliff-card:hover {
+  border-color: #c7b693;
+}
+
+.cliff-card-unlocked {
+  border-color: #a7f3d0;
+  background: #f4fbf7;
+}
+
+.cliff-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(21, 42, 59, 0.08);
+  gap: 16px;
+}
+
+.cliff-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cliff-number-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8d7c68;
+}
+
+.cliff-date-title {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--ink);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.cliff-rel-time {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: #a38a63;
+}
+
+.cliff-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.cliff-status-pill.locked {
+  background: #eae3d7;
+  color: #7b6c56;
+  border: 1px solid #dcd4c5;
+}
+
+.cliff-status-pill.unlocked {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.cliff-status-pill.claimed {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #6ee7b7;
+}
+
+.cliff-details-grid {
+  display: grid;
+  grid-template-columns: 140px 1.5fr 1.2fr;
+  gap: 20px;
+  padding-top: 16px;
+}
+
+@media (max-width: 640px) {
+  .cliff-details-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .cliff-card-header {
+    flex-direction: column;
+  }
+}
+
+.cliff-metric-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cliff-metric-label {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  opacity: 0.55;
+}
+
+.cliff-metric-value {
+  font-size: 20px;
+  font-weight: 600;
+  font-family: var(--mono);
+  color: var(--ink);
+}
+
+.cliff-metric-sub {
+  font-size: 10px;
+  color: #8d7c68;
+}
+
+.cliff-token-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.cliff-token-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink);
+  background: #fff;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+}
+
+.cliff-token-chip strong {
+  font-weight: 600;
+}
+
+.cliff-token-pending {
+  font-size: 12px;
+  color: #8d7c68;
+  font-style: italic;
+}
+
+.cliff-trigger-text {
+  font-size: 12px;
+  color: var(--ink);
+  line-height: 1.4;
+  margin: 0;
+}
