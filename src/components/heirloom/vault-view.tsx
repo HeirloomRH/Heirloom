@@ -533,24 +533,30 @@ export function VaultView() {
           <div className="portfolio-summary">
             <div className="spread">
               <span className="eyebrow">ON-CHAIN HOLDINGS & RESERVES</span>
-              <span className="micro">Robinhood Chain</span>
             </div>
 
             {realTrust ? (
-              <div className="mt-2 space-y-1">
+              <div className="mt-3 space-y-2">
                 {realTrust.liveBalances
                   .filter((b) => BigInt(b.balanceRaw) > 0n)
                   .map((b) => (
-                    <div key={b.token.symbol} className="flex items-center justify-between font-mono text-sm text-[#f5efe6] py-1 border-b border-[#25201b]/40 last:border-0">
+                    <div
+                      key={b.token.symbol}
+                      className="flex items-center justify-between font-mono text-sm py-2 border-b border-[#d7c9b3] last:border-0"
+                    >
                       <div className="flex items-center gap-2">
                         <AssetIcon symbol={b.token.symbol} className="w-5 h-5" />
-                        <span>{b.token.name} ({b.token.symbol})</span>
+                        <span className="font-semibold" style={{ color: "var(--ink)" }}>
+                          {b.token.name} <span style={{ color: "#7b6c56", fontWeight: 400 }}>({b.token.symbol})</span>
+                        </span>
                       </div>
-                      <span className="font-semibold text-emerald-400">{b.balanceFormatted} {b.token.symbol}</span>
+                      <span className="font-semibold" style={{ color: "#047857" }}>
+                        {b.balanceFormatted} {b.token.symbol}
+                      </span>
                     </div>
                   ))}
                 {realTrust.liveBalances.every((b) => BigInt(b.balanceRaw) === 0n) && (
-                  <p className="font-mono text-sm text-[#8d7c68]">
+                  <p className="font-mono text-sm" style={{ color: "#7b6c56" }}>
                     0.00 assets currently held in vault. Pending deposit.
                   </p>
                 )}
@@ -806,12 +812,12 @@ export function VaultView() {
                     <span className="eyebrow">
                       <Mail size={12} /> DECRYPTED PERSONAL LETTER
                     </span>
-                    <p className="whitespace-pre-line text-[#f5efe6]">{unlockedLetter}</p>
+                    <p className="whitespace-pre-line text-sm leading-relaxed" style={{ color: "var(--ink)" }}>{unlockedLetter}</p>
                   </div>
                 ) : realTrust?.trust.hasEncryptedLetter ? (
                   <div className="letter-empty text-center py-6">
                     <LockKeyhole size={28} className="mx-auto text-[#c4a47c]" />
-                    <h3 className="mt-2 text-base font-medium text-[#f5efe6]">
+                    <h3 className="mt-2 text-base font-medium" style={{ color: "var(--ink)" }}>
                       Personal Letter Sealed On-Chain
                     </h3>
                     <p className="mt-1 text-xs text-[#8d7c68]">
