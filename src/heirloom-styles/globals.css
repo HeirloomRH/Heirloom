@@ -1125,17 +1125,24 @@
   font-size: 10px;
 }
 .dialog {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  margin: 0 !important;
   max-width: 480px;
   width: calc(100% - 32px);
   padding: 28px;
   background: var(--paper);
   border: 1px solid #d7c6a9;
+  border-radius: 6px;
   color: var(--ink);
-  box-shadow: 0 30px 90px #0004;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.35);
+  z-index: 99999;
 }
 .dialog::backdrop {
-  background: #19130dbb;
-  backdrop-filter: blur(3px);
+  background: rgba(15, 23, 42, 0.65) !important;
+  backdrop-filter: blur(4px) !important;
 }
 .dialog-head {
   display: flex;
@@ -1157,6 +1164,9 @@
   line-height: 1.8;
   color: #918067;
 }
+.dialog-body {
+  padding: 4px 0 8px;
+}
 .dialog-actions {
   display: flex;
   justify-content: flex-end;
@@ -1169,6 +1179,78 @@
 .danger {
   background: #a1543c;
   color: #fff;
+}
+
+/* Vault Address Card — on-brand design */
+.vault-address-card {
+  margin: 20px 0;
+  padding: 18px 22px 20px;
+  border: 1px solid var(--line);
+  background: #f7f3ec;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.vault-address-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 10px;
+}
+.vault-address-card-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #8a7a66;
+}
+.vault-address-badge {
+  background: #e4ddd3;
+  color: #8a7a66;
+  border: 1px solid #d5cdc2;
+  border-radius: 3px;
+  padding: 2px 7px;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+.vault-address-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+}
+.vault-address-card-actions .button {
+  padding: 5px 12px;
+  font-size: 10px;
+  height: auto;
+  display: inline-flex;
+  width: auto;
+}
+.vault-address-mono {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--ink);
+  word-break: break-all;
+  line-height: 1.65;
+  border-top: 1px solid var(--line);
+  padding: 12px 0 0;
+}
+.vault-address-funding-hint {
+  margin-top: 14px;
+  padding: 12px 15px;
+  border: 1px solid #d8c89e;
+  background: #fdf6e8;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.75;
+  color: #6d5b34;
 }
 .docs-page {
   padding-top: 47px;

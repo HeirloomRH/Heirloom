@@ -2,6 +2,7 @@
 @source "../src";
 @import "tw-animate-css";
 @import "./heirloom-styles/globals.css";
+@import "./heirloom-styles/product.css";
 @import "./heirloom-styles/reference.css";
 @import "./heirloom-styles/brand.css";
 @import "./heirloom-styles/handbook.css";
