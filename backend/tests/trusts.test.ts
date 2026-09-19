@@ -1,8 +1,33 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect, beforeAll } from "bun:test";
 import request from "supertest";
 import { app } from "../src/app.js";
+import { pool } from "../src/db/index.js";
+import { migrate } from "../src/db/migrate.js";
 
-describe("Trusts API Integration", () => {
+let dbAvailable = false;
+if (process.env.DATABASE_URL) {
+  try {
+    const client = await Promise.race([
+      pool.connect(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Database connection timeout")), 1500)
+      ),
+    ]);
+    await client.query("SELECT 1");
+    client.release();
+    dbAvailable = true;
+  } catch {
+    dbAvailable = false;
+  }
+}
+
+describe.skipIf(!dbAvailable)("Trusts API Integration", () => {
+  beforeAll(async () => {
+    if (dbAvailable) {
+      await migrate();
+    }
+  });
+
   let createdTrustId: string;
   let vaultAddress: string;
 
