@@ -1,9 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { useRouterState } from "@tanstack/react-router";
 import { useState, useEffect, useId } from "react";
-import { ArrowUpRight, Menu, X, MessageCircle } from "lucide-react";
+import { ArrowUpRight, Menu, X } from "lucide-react";
 import { ConnectButton } from "../wallet/ConnectButton";
-import { Dialog } from "./product";
 import { ContractAddressBadge } from "./contract-address-badge";
 export function Mark({ className = "" }: { className?: string }) {
   const maskId = useId();
@@ -46,6 +45,7 @@ export function Brand() {
     </span>
   );
 }
+
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
   const path = useRouterState({ select: (s) => s.location.pathname });
@@ -66,7 +66,6 @@ export function SiteHeader() {
         >
           <Brand />
         </Link>
-        <span className="beta">EARLY PREVIEW</span>
         <nav
           className={open ? "nav-links open" : "nav-links"}
           aria-label="Main navigation"
@@ -81,7 +80,18 @@ export function SiteHeader() {
           >
             Docs
           </Link>
-          <Link to="/roadmap" onClick={() => setOpen(false)}>
+          <Link
+            className={path === "/whitepaper" ? "active" : ""}
+            to="/whitepaper"
+            onClick={() => setOpen(false)}
+          >
+            Whitepaper
+          </Link>
+          <Link
+            className={path === "/roadmap" ? "active" : ""}
+            to="/roadmap"
+            onClick={() => setOpen(false)}
+          >
             Roadmap
           </Link>
           <Link className="nav-app" to="/app" onClick={() => setOpen(false)}>
@@ -107,8 +117,6 @@ export function SiteHeader() {
   );
 }
 export function SiteFooter() {
-  const [showTgModal, setShowTgModal] = useState(false);
-
   return (
     <footer className="site-footer">
       <div className="shell">
@@ -118,6 +126,7 @@ export function SiteFooter() {
           </Link>
           <div>
             <Link to="/docs">Documentation</Link>
+            <Link to="/whitepaper">Whitepaper</Link>
             <Link to="/roadmap">Roadmap</Link>
             <a
               href="https://x.com/heirloomrh"
@@ -127,14 +136,14 @@ export function SiteFooter() {
             >
               Twitter / X
             </a>
-            <button
-              type="button"
-              onClick={() => setShowTgModal(true)}
-              className="footer-link-button"
+            <a
+              href="https://t.me/heirloomportal"
+              target="_blank"
+              rel="noopener noreferrer"
               title="Telegram Community"
             >
               Telegram
-            </button>
+            </a>
             <Link to="/docs" hash="boundaries">Risks & boundaries</Link>
           </div>
           <Link to="/create">
@@ -163,43 +172,6 @@ export function SiteFooter() {
           and jurisdiction. Capital is at risk.
         </p>
       </div>
-
-      {/* Telegram Coming Soon Modal */}
-      {showTgModal && (
-        <Dialog title="Community Launching Soon" onClose={() => setShowTgModal(false)}>
-          <div className="dialog-body">
-            <div className="flex items-start gap-3.5">
-              <div className="success-badge" style={{ background: "#e0eef8", color: "#1f6a9c" }}>
-                <MessageCircle size={18} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="font-serif text-lg font-semibold text-[#152a3b] mb-1">
-                  Telegram Community Launching Soon
-                </h4>
-                <p className="text-xs leading-relaxed text-[#6a5e4d] mb-3">
-                  The official Heirloom Telegram community is currently being finalized for protocol launch.
-                </p>
-                <p className="field-hint text-[11px] text-[#8a7c68]">
-                  Official invite links will be released first on our X account:{" "}
-                  <a
-                    href="https://x.com/heirloomrh"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ color: "#24638f", fontWeight: 600, textDecoration: "underline" }}
-                  >
-                    @heirloomrh
-                  </a>
-                </p>
-              </div>
-            </div>
-            <div className="dialog-actions mt-5">
-              <button className="button primary" onClick={() => setShowTgModal(false)}>
-                Got it
-              </button>
-            </div>
-          </div>
-        </Dialog>
-      )}
     </footer>
   );
 }

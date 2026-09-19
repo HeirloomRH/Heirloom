@@ -15,6 +15,7 @@ import { Route as CreateRouteImport } from './routes/create'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as RoadmapRouteImport } from './routes/roadmap'
 import { Route as VaultRouteImport } from './routes/vault'
+import { Route as WhitepaperRouteImport } from './routes/whitepaper'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,6 +47,11 @@ const VaultRoute = VaultRouteImport.update({
   path: '/vault',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WhitepaperRoute = WhitepaperRouteImport.update({
+  id: '/whitepaper',
+  path: '/whitepaper',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/docs': typeof DocsRoute
   '/roadmap': typeof RoadmapRoute
   '/vault': typeof VaultRoute
+  '/whitepaper': typeof WhitepaperRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/docs': typeof DocsRoute
   '/roadmap': typeof RoadmapRoute
   '/vault': typeof VaultRoute
+  '/whitepaper': typeof WhitepaperRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,13 +79,23 @@ export interface FileRoutesById {
   '/docs': typeof DocsRoute
   '/roadmap': typeof RoadmapRoute
   '/vault': typeof VaultRoute
+  '/whitepaper': typeof WhitepaperRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/app' | '/create' | '/docs' | '/roadmap' | '/vault'
+  fullPaths:
+    '/' | '/app' | '/create' | '/docs' | '/roadmap' | '/vault' | '/whitepaper'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/app' | '/create' | '/docs' | '/roadmap' | '/vault'
-  id: '__root__' | '/' | '/app' | '/create' | '/docs' | '/roadmap' | '/vault'
+  to: '/' | '/app' | '/create' | '/docs' | '/roadmap' | '/vault' | '/whitepaper'
+  id:
+    | '__root__'
+    | '/'
+    | '/app'
+    | '/create'
+    | '/docs'
+    | '/roadmap'
+    | '/vault'
+    | '/whitepaper'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -87,6 +105,7 @@ export interface RootRouteChildren {
   DocsRoute: typeof DocsRoute
   RoadmapRoute: typeof RoadmapRoute
   VaultRoute: typeof VaultRoute
+  WhitepaperRoute: typeof WhitepaperRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -133,6 +152,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VaultRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/whitepaper': {
+      id: '/whitepaper'
+      path: '/whitepaper'
+      fullPath: '/whitepaper'
+      preLoaderRoute: typeof WhitepaperRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -143,6 +169,7 @@ const rootRouteChildren: RootRouteChildren = {
   DocsRoute: DocsRoute,
   RoadmapRoute: RoadmapRoute,
   VaultRoute: VaultRoute,
+  WhitepaperRoute: WhitepaperRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
