@@ -20,7 +20,7 @@ export interface RobinhoodTokenInfo {
   isBaseCurrency?: boolean;
   underlyingTicker?: string;
   iconUrl?: string;
-  assetType: "native" | "stablecoin" | "equity" | "etf" | "commodity";
+  assetType: "native" | "stablecoin" | "equity" | "etf" | "commodity" | "credit";
 }
 
 export const ROBINHOOD_CHAIN_ID = config.rhcId;
@@ -172,10 +172,23 @@ export const FEATURED_ROBINHOOD_ASSETS: RobinhoodTokenInfo[] = [
   },
 ];
 
+// Orbio Credit — verified against robinhoodchain.blockscout.com (see
+// backend/src/services/sealedDepositService.ts for the fork-tested Exchange
+// integration this address is used against).
+export const CREDIT: RobinhoodTokenInfo = {
+  symbol: "CREDIT",
+  name: "Orbio Credit",
+  address: "0xe33322da1380e61e5ae5dfb21e7f62924c73004c",
+  decimals: 6,
+  iconUrl: "/RH-RWA-Assets-Media/rh-icon.png",
+  assetType: "credit",
+};
+
 export const ALL_ROBINHOOD_TOKENS: RobinhoodTokenInfo[] = [
   ETH,
   WETH,
   USDG,
+  CREDIT,
   ...FEATURED_ROBINHOOD_ASSETS,
 ];
 
@@ -201,16 +214,16 @@ export function isValidEvmAddress(address: string | undefined | null): boolean {
   return isAddress(address.trim());
 }
 
-export function resolveRobinhoodToken(query: string | undefined | null): RobinhoodTokenInfo | undefined {
+export function resolveRobinhoodToken(
+  query: string | undefined | null,
+): RobinhoodTokenInfo | undefined {
   if (!query || typeof query !== "string") return undefined;
   const clean = query.trim();
 
   // 1. Exact address match (case-insensitive)
   if (isAddress(clean)) {
     const checksummed = getAddress(clean);
-    return ALL_ROBINHOOD_TOKENS.find(
-      (t) => t.address.toLowerCase() === checksummed.toLowerCase()
-    );
+    return ALL_ROBINHOOD_TOKENS.find((t) => t.address.toLowerCase() === checksummed.toLowerCase());
   }
 
   // 2. Check alias map first
@@ -221,14 +234,14 @@ export function resolveRobinhoodToken(query: string | undefined | null): Robinho
   const direct = ALL_ROBINHOOD_TOKENS.find(
     (t) =>
       t.symbol.toUpperCase() === aliased ||
-      (t.underlyingTicker && t.underlyingTicker.toUpperCase() === aliased)
+      (t.underlyingTicker && t.underlyingTicker.toUpperCase() === aliased),
   );
   if (direct) return direct;
 
   // 4. Name or substring match
   const lower = clean.toLowerCase();
   return ALL_ROBINHOOD_TOKENS.find(
-    (t) => t.name.toLowerCase().includes(lower) || t.symbol.toLowerCase() === lower
+    (t) => t.name.toLowerCase().includes(lower) || t.symbol.toLowerCase() === lower,
   );
 }
 
@@ -252,11 +265,13 @@ export const rhcClient: PublicClient = createPublicClient({
 /**
  * Fetch balances for a wallet address across all supported Robinhood assets
  */
-export async function fetchWalletBalances(walletAddress: `0x${string}`): Promise<Array<{
-  token: RobinhoodTokenInfo;
-  balanceRaw: string;
-  balanceFormatted: string;
-}>> {
+export async function fetchWalletBalances(walletAddress: `0x${string}`): Promise<
+  Array<{
+    token: RobinhoodTokenInfo;
+    balanceRaw: string;
+    balanceFormatted: string;
+  }>
+> {
   const results: Array<{
     token: RobinhoodTokenInfo;
     balanceRaw: string;

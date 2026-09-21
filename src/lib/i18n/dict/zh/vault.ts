@@ -62,8 +62,7 @@ export const vault: typeof EnVault = {
     title: "好事，自有它的时节。",
     micro: "解锁节点与时间线",
     hint: "解锁节点会在预定的里程碑日期解锁资产，或在继承程序执行时立即解锁。",
-    cliffTooltip: (n: string, percent: number, date: string) =>
-      `节点 ${n}：${percent}%（${date}）`,
+    cliffTooltip: (n: string, percent: number, date: string) => `节点 ${n}：${percent}%（${date}）`,
     cliffBadge: (n: string) => `节点 ${n} · 里程碑`,
     transferred: "已转给受益人",
     reachedUnlocked: "里程碑已到达（已解锁）",
@@ -88,8 +87,7 @@ export const vault: typeof EnVault = {
   letter: {
     decryptedEyebrow: "已解密的个人信件",
     sealedTitle: "个人信件已在链上封存",
-    sealedBody:
-      "使用 AES-256-GCM 加密。当信托处于活跃或已触发状态时，受益人可解锁阅读。",
+    sealedBody: "使用 AES-256-GCM 加密。当信托处于活跃或已触发状态时，受益人可解锁阅读。",
     unlockCta: "解锁并阅读信件",
     emptyTitle: "一个还没写下的故事。",
     emptyBody: "这份信托没有附上个人信件。",
@@ -100,8 +98,7 @@ export const vault: typeof EnVault = {
     title: "失联开关",
     daysRemaining: "天后到期",
     missed: "已错过心跳窗口。继承方案现已对受益人生效。",
-    window: (days: number) =>
-      `窗口期：${days} 天。若错过签到，继承程序将自动执行。`,
+    window: (days: number) => `窗口期：${days} 天。若错过签到，继承程序将自动执行。`,
     signing: "签名中…",
     checkIn: "签到（免 Gas）",
   },
@@ -116,8 +113,7 @@ export const vault: typeof EnVault = {
 
   deposit: {
     title: "存入资产",
-    intro:
-      "选择要存入这个金库的资产与金额（在 Robinhood Chain 上）。你的钱包会提示你签署该交易。",
+    intro: "选择要存入这个金库的资产与金额（在 Robinhood Chain 上）。你的钱包会提示你签署该交易。",
     assetLabel: "资产",
     amountLabel: "金额",
     walletPrefix: "钱包余额：",
@@ -162,6 +158,7 @@ export const vault: typeof EnVault = {
     estimateUnavailable: "无报价",
     passthroughNote: "原样持有",
     fallbackNote: (symbol: string) => `改为兑换成 ${symbol}`,
+    creditNote: "通过 Orbio 交易所购买",
     basketRouted: "已兑换",
     basketPassthrough: "已转账",
     basketTotal: "合计",
@@ -176,6 +173,8 @@ export const vault: typeof EnVault = {
     sealedExecutionDarkpool: "加密中继（暗池模式）",
     sealedExecutionDarkpoolHint:
       "隐藏您的钱包身份。通过链下 Permit2 签名授权，并由 Heirloom 中继器在链上直接结算交付至信托金库。",
+    sealedExecutionCreditForced:
+      "加密中继（暗池模式）——此篮子包含 CREDIT 配置，仅中继器可交割，因此为必选项。",
 
     approvePermit2: "授权 Permit2",
     approvingPermit2: "正在授权 Permit2……",
@@ -188,8 +187,7 @@ export const vault: typeof EnVault = {
     relayerUnavailable: "Heirloom 中继器暂时离线，请使用公开多重调用模式。",
 
     slippageLabel: "滑点容忍度",
-    slippageHint:
-      "若某一腿无法在该容忍度内成交，将转为兑换 USDG，而不会导致整笔存入回滚。",
+    slippageHint: "若某一腿无法在该容忍度内成交，将转为兑换 USDG，而不会导致整笔存入回滚。",
     slippageCustom: "自定义",
 
     routerCheckingTitle: "正在检查兑换流动性……",
@@ -201,8 +199,7 @@ export const vault: typeof EnVault = {
     routerUnavailableProbe:
       "无法连接 Robinhood Chain 以确认兑换流动性。请改为转入单一资产，或稍后重试。",
     routerUnavailableAction: "改为转入单一资产",
-    quotesUnavailable:
-      "实时报价不可用，因此无法显示您将收到的数量。下方的 ETH 拆分比例是精确的。",
+    quotesUnavailable: "实时报价不可用，因此无法显示您将收到的数量。下方的 ETH 拆分比例是精确的。",
 
     basketSend: "兑换并存入",
     basketReview: "查看拆分明细",
@@ -233,14 +230,15 @@ export const vault: typeof EnVault = {
     basket_empty: "本信托没有可供拆分的目标配置。",
     basket_allocation_positive: "每项配置比例都必须大于 0%，才能路由篮子存入。",
     basket_allocation_total: "目标配置比例之和必须为 100%。",
-    basket_duplicate_symbol:
-      "本信托中同一资产出现了两次；篮子存入要求每项资产仅一行。",
+    basket_duplicate_symbol: "本信托中同一资产出现了两次；篮子存入要求每项资产仅一行。",
     basket_amount_positive: "请输入大于 0 的 ETH 数量。",
     slippage_invalid: "滑点容忍度必须为整数基点。",
     slippage_too_low: "滑点容忍度不得低于 0.01%。",
     slippage_too_high: "滑点容忍度不得超过 50%。",
     routerUnavailable: "该网络不支持兑换路由，因此无法执行篮子存入。",
     quotesRequired: "签署篮子存入前必须获取实时报价。",
+    creditRequiresSealed:
+      "此篮子包含 CREDIT 配置，仅可通过密封中继器交割。请将执行隐私切换为密封中继器以继续。",
     insufficientEth: (balance: string) =>
       `ETH 不足。您已连接的钱包在 Robinhood Chain 上持有 ${balance} ETH。`,
     insufficientUsdg: (balance: string) =>
@@ -261,13 +259,15 @@ export const vault: typeof EnVault = {
     disconnectButton: "断开连接",
     disconnecting: "正在断开……",
     modalTitle: "连接 Telegram 警报",
-    modalDesc: "点击下方按钮在 Telegram 中打开并配对您的信托与 @HeirloomRHBot。配对链接将在 1 小时内有效。",
+    modalDesc:
+      "点击下方按钮在 Telegram 中打开并配对您的信托与 @HeirloomRHBot。配对链接将在 1 小时内有效。",
     openBot: "在 Telegram 中打开",
     copyLink: "复制链接",
     copied: "链接已复制！",
     close: "关闭",
     checkinBannerTitle: "Telegram 心跳签到",
-    checkinBannerDesc: "您通过 @HeirloomRHBot 的警报打开了此金库。请在下方签名以重置 90 天心跳窗口。",
+    checkinBannerDesc:
+      "您通过 @HeirloomRHBot 的警报打开了此金库。请在下方签名以重置 90 天心跳窗口。",
   },
 
   beneficiaryFallback: "受益人",

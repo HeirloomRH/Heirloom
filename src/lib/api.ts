@@ -16,7 +16,7 @@ export interface RobinhoodToken {
   isBaseCurrency?: boolean;
   underlyingTicker?: string;
   iconUrl?: string;
-  assetType: "native" | "stablecoin" | "equity" | "etf" | "commodity";
+  assetType: "native" | "stablecoin" | "equity" | "etf" | "commodity" | "credit";
 }
 
 export interface LiveBalanceItem {
@@ -307,6 +307,9 @@ export interface SealedDepositSubmission {
     amountIn: string;
     minOut: string;
     fee: number;
+    // "SWAP" (default, omitted) routes through Uniswap; "CREDIT" routes
+    // through the Orbio Exchange instead — see backend sealedDepositService.ts.
+    kind?: "SWAP" | "CREDIT";
   }>;
   passthroughWei: string;
 }

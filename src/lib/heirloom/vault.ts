@@ -33,6 +33,7 @@ export const assets = [
   { symbol: "META", name: "Meta Platforms Token" },
   { symbol: "COIN", name: "Coinbase Stock Token" },
   { symbol: "USDG", name: "Global Dollar" },
+  { symbol: "CREDIT", name: "Orbio Credit (AI Inference)" },
   { symbol: "ETH", name: "Ether (Base Asset)" },
 ];
 export const sample: Vault = {
@@ -83,16 +84,10 @@ export function readVaults(): Vault[] {
 }
 export function saveVault(v: Vault) {
   const all = readVaults();
-  localStorage.setItem(
-    STORE,
-    JSON.stringify([...all.filter((x) => x.id !== v.id), v]),
-  );
+  localStorage.setItem(STORE, JSON.stringify([...all.filter((x) => x.id !== v.id), v]));
 }
 export function removeVault(id: string) {
-  localStorage.setItem(
-    STORE,
-    JSON.stringify(readVaults().filter((v) => v.id !== id)),
-  );
+  localStorage.setItem(STORE, JSON.stringify(readVaults().filter((v) => v.id !== id)));
 }
 export const money = (n: number) =>
   new Intl.NumberFormat("en-US", {

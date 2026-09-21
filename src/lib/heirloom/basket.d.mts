@@ -2,9 +2,11 @@ export declare const BPS_DENOMINATOR: bigint;
 
 export declare const ROUTE_PASSTHROUGH: "passthrough";
 export declare const ROUTE_SWAP: "swap";
+export declare const ROUTE_CREDIT: "credit";
 export declare const ROUTE_FALLBACK: "fallback";
+export declare const CREDIT_SYMBOL: "CREDIT";
 
-export type BasketRoute = "passthrough" | "swap" | "fallback";
+export type BasketRoute = "passthrough" | "swap" | "credit" | "fallback";
 
 /** "" when valid; otherwise a stable code resolved against the locale dictionary. */
 export type SlippageError =
@@ -70,6 +72,14 @@ export interface PlannedSwap {
   merged: boolean;
 }
 
+/** A CREDIT leg, bought through the Orbio Exchange rather than a Uniswap pool. */
+export interface PlannedCreditLeg {
+  symbol: string;
+  amountIn: bigint;
+  /** `null` until the leg has a real quote — never executed on a stale minimum. */
+  minOut: bigint | null;
+}
+
 export interface BasketPlan {
   error: BasketError;
   inputSymbol: string;
@@ -78,6 +88,7 @@ export interface BasketPlan {
   totalWei: bigint;
   legs: PlannedLeg[];
   swaps: PlannedSwap[];
+  creditLegs: PlannedCreditLeg[];
   passthroughWei: bigint;
   routedWei: bigint;
   hasFallback: boolean;

@@ -58,7 +58,7 @@ import {
   type Vault,
 } from "@/lib/heirloom/vault";
 import { useT } from "@/lib/i18n";
-import { planBasketDeposit } from "@/lib/heirloom/basket.mjs";
+import { planBasketDeposit, CREDIT_SYMBOL } from "@/lib/heirloom/basket.mjs";
 import type { BasketPlan, BasketQuote } from "@/lib/heirloom/basket.mjs";
 import {
   checkRouterAvailability,
@@ -75,6 +75,7 @@ import {
   buildPermit2ApprovalRequest,
   buildPermit2TypedData,
 } from "@/lib/heirloom/permit2";
+import { quoteCreditLeg, buildCreditLegPayload } from "@/lib/heirloom/orbio";
 
 
 // Tab identity is a stable key; only the label is translated.
@@ -257,6 +258,17 @@ export function VaultView() {
     [realTrust],
   );
 
+  // CREDIT can only be delivered by the Sealed Relayer (it needs a signed
+  // Permit2 authorization over USDG) — ETH input and the public multicall
+  // path have no venue for it at all, per handleBasketDeposit's guard below.
+  const requiresCredit = basketLegs.some((leg) => leg.symbol === CREDIT_SYMBOL);
+
+  useEffect(() => {
+    if (!requiresCredit) return;
+    setBasketInputAsset("USDG");
+    setSealedExecution(true);
+  }, [requiresCredit]);
+
   const basketPlan = useMemo<BasketPlan | null>(() => {
     const amount = parseFloat(depositAmount);
     if (!depositAmount || isNaN(amount) || amount <= 0) return null;
@@ -303,18 +315,25 @@ export function VaultView() {
     const timer = setTimeout(async () => {
       setQuoting(true);
       try {
-        const quotes = await quoteBasketLegs(
-          publicClient,
-          basketPlan.legs
-            .filter((leg) => leg.route !== "passthrough" && !!leg.tokenAddress)
-            .map((leg) => ({
-              symbol: leg.symbol,
-              tokenAddress: leg.tokenAddress as `0x${string}`,
-              decimals: leg.decimals,
-              amountIn: leg.amountIn,
-            })),
-          basketInputAsset === "USDG" ? USDG_ADDRESS : undefined,
-        );
+        // CREDIT never touches a Uniswap pool, so it's quoted separately
+        // against the Orbio Exchange and merged into the same quote map.
+        const creditLeg = basketPlan.legs.find((leg) => leg.route === "credit");
+        const [quotes, creditQuote] = await Promise.all([
+          quoteBasketLegs(
+            publicClient,
+            basketPlan.legs
+              .filter((leg) => leg.route !== "passthrough" && leg.route !== "credit" && !!leg.tokenAddress)
+              .map((leg) => ({
+                symbol: leg.symbol,
+                tokenAddress: leg.tokenAddress as `0x${string}`,
+                decimals: leg.decimals,
+                amountIn: leg.amountIn,
+              })),
+            basketInputAsset === "USDG" ? USDG_ADDRESS : undefined,
+          ),
+          creditLeg ? quoteCreditLeg(publicClient, creditLeg.amountIn) : Promise.resolve(null),
+        ]);
+        if (creditQuote) quotes[CREDIT_SYMBOL] = creditQuote;
         if (!cancelled) setBasketQuotes(quotes);
       } catch {
         if (!cancelled) setBasketQuotes({});
@@ -580,13 +599,16 @@ export function VaultView() {
         },
         signature,
         owner: address,
-        legs: basketPlan.swaps.map((s) => ({
-          symbol: s.symbol,
-          tokenAddress: s.tokenAddress,
-          amountIn: s.amountIn.toString(),
-          minOut: (s.minOut ?? 0n).toString(),
-          fee: s.routing?.fee ?? 3000,
-        })),
+        legs: [
+          ...basketPlan.swaps.map((s) => ({
+            symbol: s.symbol,
+            tokenAddress: s.tokenAddress ?? "",
+            amountIn: s.amountIn.toString(),
+            minOut: (s.minOut ?? 0n).toString(),
+            fee: s.routing?.fee ?? 3000,
+          })),
+          ...basketPlan.creditLegs.map(buildCreditLegPayload),
+        ],
         passthroughWei: basketPlan.passthroughWei.toString(),
       });
 
@@ -619,6 +641,13 @@ export function VaultView() {
     }
     if (basketPlan.error) {
       setError(codeToMessage(basketPlan.error));
+      return;
+    }
+    // CREDIT is bought through the Orbio Exchange, not a Uniswap pool — the
+    // direct multicall path has nowhere to route it and would silently
+    // under-fund this slice of the basket. Only the Sealed Relayer can deliver it.
+    if (basketPlan.creditLegs.length > 0) {
+      setError(t.vault.errors.creditRequiresSealed);
       return;
     }
     // Never arm a payable transaction against a venue that is not live.
@@ -1739,6 +1768,8 @@ export function VaultView() {
                       type="button"
                       aria-pressed={basketInputAsset === "ETH"}
                       className={basketInputAsset === "ETH" ? "is-active" : ""}
+                      disabled={requiresCredit}
+                      title={requiresCredit ? t.vault.errors.creditRequiresSealed : undefined}
                       onClick={() => {
                         setBasketInputAsset("ETH");
                         setDepositAmount("");
@@ -1767,30 +1798,34 @@ export function VaultView() {
                     <label className="deposit-label">
                       {t.vault.deposit.sealedExecutionLabel}
                     </label>
-                    <div
-                      className="deposit-currency-options"
-                      role="group"
-                      aria-label={t.vault.deposit.sealedExecutionLabel}
-                    >
-                      <button
-                        type="button"
-                        aria-pressed={!sealedExecution}
-                        className={!sealedExecution ? "is-active" : ""}
-                        onClick={() => setSealedExecution(false)}
+                    {requiresCredit ? (
+                      <p className="deposit-hint">{t.vault.deposit.sealedExecutionCreditForced}</p>
+                    ) : (
+                      <div
+                        className="deposit-currency-options"
+                        role="group"
+                        aria-label={t.vault.deposit.sealedExecutionLabel}
                       >
-                        <Split size={13} />
-                        {t.vault.deposit.sealedExecutionPublic}
-                      </button>
-                      <button
-                        type="button"
-                        aria-pressed={sealedExecution}
-                        className={sealedExecution ? "is-active" : ""}
-                        onClick={() => setSealedExecution(true)}
-                      >
-                        <EyeOff size={13} />
-                        {t.vault.deposit.sealedExecutionDarkpool}
-                      </button>
-                    </div>
+                        <button
+                          type="button"
+                          aria-pressed={!sealedExecution}
+                          className={!sealedExecution ? "is-active" : ""}
+                          onClick={() => setSealedExecution(false)}
+                        >
+                          <Split size={13} />
+                          {t.vault.deposit.sealedExecutionPublic}
+                        </button>
+                        <button
+                          type="button"
+                          aria-pressed={sealedExecution}
+                          className={sealedExecution ? "is-active" : ""}
+                          onClick={() => setSealedExecution(true)}
+                        >
+                          <EyeOff size={13} />
+                          {t.vault.deposit.sealedExecutionDarkpool}
+                        </button>
+                      </div>
+                    )}
                     {sealedExecution && (
                       <p className="deposit-hint" style={{ marginTop: "6px" }}>
                         {t.vault.deposit.sealedExecutionDarkpoolHint}
@@ -1963,6 +1998,20 @@ export function VaultView() {
                                     leg.fallbackSymbol ?? "USDG",
                                   )}
                                 </em>
+                              ) : leg.route === "credit" ? (
+                                leg.quotedOut !== null ? (
+                                  <>
+                                    {Number(
+                                      formatUnits(leg.quotedOut, leg.decimals ?? 6),
+                                    ).toLocaleString(undefined, {
+                                      maximumFractionDigits: 4,
+                                    })}
+                                    <br />
+                                    <em>{t.vault.deposit.creditNote}</em>
+                                  </>
+                                ) : (
+                                  <em>{t.vault.deposit.estimateUnavailable}</em>
+                                )
                               ) : leg.quotedOut !== null ? (
                                 Number(
                                   formatUnits(leg.quotedOut, leg.decimals ?? 18),

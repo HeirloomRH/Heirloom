@@ -60,8 +60,7 @@ export const vault = {
     title: "Good things, in their own time.",
     micro: "VESTING CLIFFS & TIMELINE",
     hint: "Vesting cliffs unlock assets on predetermined milestone dates or immediately upon succession execution.",
-    cliffTooltip: (n: string, percent: number, date: string) =>
-      `Cliff ${n}: ${percent}% (${date})`,
+    cliffTooltip: (n: string, percent: number, date: string) => `Cliff ${n}: ${percent}% (${date})`,
     cliffBadge: (n: string) => `Cliff ${n} · Milestone`,
     transferred: "Transferred to beneficiary",
     reachedUnlocked: "Milestone reached (Unlocked)",
@@ -77,19 +76,16 @@ export const vault = {
     corpusShareSub: "of total trust assets",
     tokenRelease: "Token Release",
     pendingDeposit: "Pending on-chain deposit",
-    pendingDepositWithAmount: (amount: string) =>
-      `${amount} (pending on-chain deposit)`,
+    pendingDepositWithAmount: (amount: string) => `${amount} (pending on-chain deposit)`,
     releaseTrigger: "Release Trigger",
     triggerReached: "Calendar milestone reached",
-    triggerPending:
-      "Calendar unlock or upon Grantor succession execution",
+    triggerPending: "Calendar unlock or upon Grantor succession execution",
   },
 
   letter: {
     decryptedEyebrow: "DECRYPTED PERSONAL LETTER",
     sealedTitle: "Personal Letter Sealed On-Chain",
-    sealedBody:
-      "Encrypted with AES-256-GCM. Unlocks for the beneficiary when active or triggered.",
+    sealedBody: "Encrypted with AES-256-GCM. Unlocks for the beneficiary when active or triggered.",
     unlockCta: "Unlock & Read Letter",
     emptyTitle: "A story still to be written.",
     emptyBody: "No personal letter was attached to this trust.",
@@ -99,8 +95,7 @@ export const vault = {
   heartbeat: {
     title: "Dead-Man's Switch",
     daysRemaining: "days remaining",
-    missed:
-      "Heartbeat window missed. Succession plan is now active for the beneficiary.",
+    missed: "Heartbeat window missed. Succession plan is now active for the beneficiary.",
     window: (days: number) =>
       `Window: ${days} days. If a check-in is missed, succession executes automatically.`,
     signing: "Signing...",
@@ -136,8 +131,7 @@ export const vault = {
     viewTransaction: "View Transaction",
     successTitle: "Deposit Confirmed",
     successBodyPrefix: "Your deposit of",
-    successBodySuffix:
-      "was confirmed on Robinhood Chain. Your vault balances are being refreshed.",
+    successBodySuffix: "was confirmed on Robinhood Chain. Your vault balances are being refreshed.",
     viewOnExplorer: "View on Explorer",
 
     modeLabel: "How would you like to fund this?",
@@ -165,6 +159,7 @@ export const vault = {
     estimateUnavailable: "No quote",
     passthroughNote: "Held as-is",
     fallbackNote: (symbol: string) => `Routed to ${symbol}`,
+    creditNote: "Bought via Orbio Exchange",
     basketRouted: "Swapped",
     basketPassthrough: "Transferred",
     basketTotal: "Total",
@@ -179,6 +174,8 @@ export const vault = {
     sealedExecutionDarkpool: "Sealed Relayer (Darkpool)",
     sealedExecutionDarkpoolHint:
       "Shields your wallet identity. Authorized via off-chain Permit2 signature and settled on-chain by the Heirloom Relayer straight to your vault.",
+    sealedExecutionCreditForced:
+      "Sealed Relayer (Darkpool) — required because this basket includes a CREDIT allocation, which only the relayer can deliver.",
 
     approvePermit2: "Approve Permit2",
     approvingPermit2: "Approving Permit2…",
@@ -225,8 +222,7 @@ export const vault = {
     invalidAmount: "Please enter a valid amount greater than 0.",
     txFailed: "Transaction failed or was rejected.",
     connectGrantor: "Connect the Grantor wallet to submit a check-in.",
-    onlyGrantor:
-      "Only the Grantor wallet can check in to extend the dead-man's switch.",
+    onlyGrantor: "Only the Grantor wallet can check in to extend the dead-man's switch.",
     heartbeatFailed: "Failed to submit heartbeat signature.",
     noDeposit: "No new deposit confirmed on-chain yet.",
     unlockFailed: "Failed to unlock encrypted letter.",
@@ -246,8 +242,9 @@ export const vault = {
     slippage_too_high: "Slippage tolerance cannot exceed 50%.",
     routerUnavailable:
       "Swap routing is unavailable on this network, so the basket cannot be executed.",
-    quotesRequired:
-      "Live quotes are required before a basket deposit can be signed.",
+    quotesRequired: "Live quotes are required before a basket deposit can be signed.",
+    creditRequiresSealed:
+      "This basket includes a CREDIT allocation, which is only deliverable through the Sealed Relayer. Switch execution privacy to Sealed Relayer to continue.",
     insufficientEth: (balance: string) =>
       `Insufficient ETH. Your connected wallet holds ${balance} ETH on Robinhood Chain.`,
     insufficientUsdg: (balance: string) =>
@@ -268,13 +265,15 @@ export const vault = {
     disconnectButton: "Disconnect",
     disconnecting: "Disconnecting…",
     modalTitle: "Connect Telegram Alerts",
-    modalDesc: "Tap below to open Telegram and pair your trust with @HeirloomRHBot. Your pairing link expires in 1 hour.",
+    modalDesc:
+      "Tap below to open Telegram and pair your trust with @HeirloomRHBot. Your pairing link expires in 1 hour.",
     openBot: "Open in Telegram",
     copyLink: "Copy Link",
     copied: "Link copied!",
     close: "Close",
     checkinBannerTitle: "Telegram Heartbeat Check-In",
-    checkinBannerDesc: "You opened this vault from an alert in @HeirloomRHBot. Sign below to extend your 90-day window.",
+    checkinBannerDesc:
+      "You opened this vault from an alert in @HeirloomRHBot. Sign below to extend your 90-day window.",
   },
 
   beneficiaryFallback: "Beneficiary",

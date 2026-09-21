@@ -11,11 +11,9 @@
  * is a verified proxy deployed by the same address as CREDIT itself.
  */
 import type { Address, PublicClient } from "viem";
+import { CREDIT_SYMBOL } from "./basket.mjs";
 
-// Duplicated from basket.mjs's CREDIT_SYMBOL rather than imported: this repo's
-// tsconfig doesn't enable allowJs/checkJs, so named exports from a plain .mjs
-// module don't resolve reliably into a .ts file. Keep both literals in sync.
-const CREDIT_SYMBOL = "CREDIT";
+export { CREDIT_SYMBOL };
 
 /** Same shape `quoteBasketLegs` (swap-router.ts) produces per leg. */
 export interface CreditQuote {
