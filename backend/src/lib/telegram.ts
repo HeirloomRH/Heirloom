@@ -16,6 +16,7 @@ export interface InlineKeyboardMarkup {
 export interface InlineKeyboardButton {
   text: string;
   url?: string;
+  web_app?: { url: string };
   callback_data?: string;
 }
 
@@ -75,6 +76,13 @@ export async function deleteWebhook(): Promise<void> {
 }
 
 /**
+ * Get current webhook diagnostic information from Telegram
+ */
+export async function getWebhookInfo(): Promise<any> {
+  return telegramPost("getWebhookInfo", {});
+}
+
+/**
  * Build a Telegram deep-link URL for the bot with a start payload
  */
 export function buildStartLink(payload: string): string {
@@ -82,16 +90,26 @@ export function buildStartLink(payload: string): string {
 }
 
 /**
- * Build the "💓 Check In" inline keyboard for heartbeat alerts
+ * Build the "💓 Check In" inline keyboard for heartbeat alerts.
+ * Uses Telegram Mini App (web_app) on HTTPS so the check-in modal
+ * launches seamlessly inside the Telegram screen without leaving the app.
  */
 export function buildCheckinKeyboard(trustId: string, miniAppUrl: string): InlineKeyboardMarkup {
+  const checkinUrl = `${miniAppUrl}/vault/${trustId}?checkin=1`;
+  const isHttps = checkinUrl.startsWith("https://");
+
   return {
     inline_keyboard: [
       [
-        {
-          text: "💓 Check In (Gasless)",
-          url: `${miniAppUrl}/vault/${trustId}?checkin=1`,
-        },
+        isHttps
+          ? {
+              text: "💓 Check In (Gasless)",
+              web_app: { url: checkinUrl },
+            }
+          : {
+              text: "💓 Check In (Gasless)",
+              url: checkinUrl,
+            },
       ],
     ],
   };

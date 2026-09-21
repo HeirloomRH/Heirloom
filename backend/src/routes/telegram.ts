@@ -1,7 +1,12 @@
 import { Router, Request, Response } from "express";
 import crypto from "node:crypto";
 import { query } from "../db/index.js";
-import { answerCallbackQuery, isBotConfigured } from "../lib/telegram.js";
+import {
+  answerCallbackQuery,
+  isBotConfigured,
+  setWebhook,
+  getWebhookInfo,
+} from "../lib/telegram.js";
 import { config } from "../config.js";
 
 export const telegramRouter = Router();
@@ -197,4 +202,57 @@ telegramRouter.get("/webhook-status", (_req: Request, res: Response) => {
     configured: isBotConfigured(),
     botUsername: config.telegramBotUsername,
   });
+});
+
+/**
+ * GET /api/telegram/webhook-info
+ * Returns live webhook diagnostic information directly from Telegram API
+ */
+telegramRouter.get("/webhook-info", async (_req: Request, res: Response) => {
+  try {
+    if (!isBotConfigured()) {
+      res.status(400).json({ error: "TELEGRAM_BOT_TOKEN is not configured" });
+      return;
+    }
+    const info = await getWebhookInfo();
+    res.json(info);
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to retrieve webhook info", details: err.message });
+  }
+});
+
+/**
+ * POST /api/telegram/set-webhook
+ * Registers a public HTTPS webhook URL with Telegram Bot API
+ */
+telegramRouter.post("/set-webhook", async (req: Request, res: Response) => {
+  try {
+    if (!isBotConfigured()) {
+      res.status(400).json({ error: "TELEGRAM_BOT_TOKEN is not configured" });
+      return;
+    }
+
+    const { webhookUrl } = req.body || {};
+    if (!webhookUrl || typeof webhookUrl !== "string") {
+      res.status(400).json({ error: "webhookUrl is required (must be a valid public HTTPS URL)" });
+      return;
+    }
+
+    if (!webhookUrl.startsWith("https://")) {
+      res.status(400).json({ error: "Telegram requires webhookUrl to start with https://" });
+      return;
+    }
+
+    await setWebhook(webhookUrl);
+    const info = await getWebhookInfo();
+
+    res.json({
+      success: true,
+      message: `Telegram webhook set to ${webhookUrl}`,
+      webhookInfo: info,
+    });
+  } catch (err: any) {
+    console.error("[Telegram] Error setting webhook:", err);
+    res.status(500).json({ error: "Failed to set webhook", details: err.message });
+  }
 });
