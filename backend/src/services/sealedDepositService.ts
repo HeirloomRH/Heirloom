@@ -91,10 +91,16 @@ export const swapRouterAbi = [
   },
 ] as const;
 
-// Orbio Exchange (CREDIT order book). Signatures per the Heirloom x Orbio
-// integration spec — NOT yet independently confirmed against a published ABI
-// (the contract is verified on-chain but its source was not decoded here), so
-// treat this as best-effort until it has been fork-tested against RHC.
+// Orbio Exchange (CREDIT order book). The integration spec's documented
+// `buy(uint256,uint256,uint256)` does NOT exist on the deployed contract —
+// caught by fork-testing against a local anvil fork of RHC (block ~68.77M)
+// before this ever touched real funds. The real signature, recovered from the
+// implementation's bytecode selectors (0x8945257c) and confirmed with a real
+// buy on the fork: `buy(uint256 usdgIn, uint256 minCreditOut, address
+// recipient, uint256 maxFills)`. It delivers CREDIT straight to `recipient`
+// — no relayer hop needed. getQuote's documented signature was correct as-is
+// (confirmed against the same fork, selector 0x758af3ab, returned a sane
+// ~8.9% discount matching the spec's claimed 5-20% range).
 export const orbioExchangeAbi = [
   {
     name: "getQuote",
@@ -113,6 +119,7 @@ export const orbioExchangeAbi = [
     inputs: [
       { name: "usdgIn", type: "uint256" },
       { name: "minCreditOut", type: "uint256" },
+      { name: "recipient", type: "address" },
       { name: "maxFills", type: "uint256" },
     ],
     outputs: [{ name: "creditOut", type: "uint256" }],
@@ -204,7 +211,7 @@ export interface SealedDepositPayload {
  * Executes a sealed basket deposit:
  * 1. Pulls USDG from grantor using Permit2 permitTransferFrom directly to relayer
  * 2. Relayer approves SwapRouter02 and executes multicall exactInputSingle -> outputs land in vaultAddress
- * 3. Relayer buys any CREDIT leg through the Orbio Exchange, quote-band enforced, then forwards it to vaultAddress
+ * 3. Relayer buys any CREDIT leg through the Orbio Exchange, quote-band enforced, delivered straight to vaultAddress
  * 4. Any direct passthrough USDG is transferred to vaultAddress
  */
 export async function executeSealedBasketDeposit(params: {
@@ -214,7 +221,6 @@ export async function executeSealedBasketDeposit(params: {
   pullTxHash: Hash;
   swapTxHash?: Hash;
   creditBuyTxHash?: Hash;
-  creditTransferTxHash?: Hash;
   transferTxHash?: Hash;
 }> {
   const relayerAccount = getRelayerAccount();
@@ -288,7 +294,6 @@ export async function executeSealedBasketDeposit(params: {
 
   let swapTxHash: Hash | undefined;
   let creditBuyTxHash: Hash | undefined;
-  let creditTransferTxHash: Hash | undefined;
   let transferTxHash: Hash | undefined;
 
   const swapLegs = payload.legs.filter((leg) => leg.kind !== "CREDIT");
@@ -355,10 +360,9 @@ export async function executeSealedBasketDeposit(params: {
     }
   }
 
-  // Step 3: Buy any CREDIT leg through the Orbio Exchange and forward it to the vault.
-  // The exchange has no recipient parameter, so CREDIT lands on the relayer first;
-  // balance-before/after (not the ABI's declared return value, which is unconfirmed)
-  // is what decides how much gets forwarded.
+  // Step 3: Buy any CREDIT leg through the Orbio Exchange, delivered straight
+  // to vaultAddress via buy()'s recipient parameter — confirmed on a fork
+  // (see orbioExchangeAbi above), so no relayer hop or separate transfer needed.
   if (creditLegs.length > 0) {
     const creditAmountIn = creditLegs.reduce((sum, leg) => sum + BigInt(leg.amountIn), 0n);
     const requestedMinOut = creditLegs.reduce((sum, leg) => sum + BigInt(leg.minOut), 0n);
@@ -397,48 +401,15 @@ export async function executeSealedBasketDeposit(params: {
       await publicClient.waitForTransactionReceipt({ hash: approveTx });
     }
 
-    const creditBalanceBefore = await publicClient.readContract({
-      address: CREDIT_ADDRESS,
-      abi: erc20Abi,
-      functionName: "balanceOf",
-      args: [relayerAccount.address],
-    });
-
     creditBuyTxHash = await walletClient.writeContract({
       address: ORBIO_EXCHANGE_ADDRESS,
       abi: orbioExchangeAbi,
       functionName: "buy",
-      args: [creditAmountIn, minCreditOut, maxFills],
+      args: [creditAmountIn, minCreditOut, vaultAddress, maxFills],
     });
     const buyReceipt = await publicClient.waitForTransactionReceipt({ hash: creditBuyTxHash });
     if (buyReceipt.status !== "success") {
       throw new Error(`Orbio Exchange buy() reverted on-chain: ${creditBuyTxHash}`);
-    }
-
-    const creditBalanceAfter = await publicClient.readContract({
-      address: CREDIT_ADDRESS,
-      abi: erc20Abi,
-      functionName: "balanceOf",
-      args: [relayerAccount.address],
-    });
-    const creditReceived = creditBalanceAfter - creditBalanceBefore;
-    if (creditReceived < minCreditOut) {
-      throw new Error(
-        `Orbio Exchange buy() returned less CREDIT than the enforced minimum: got ${creditReceived}, needed ${minCreditOut}`,
-      );
-    }
-
-    creditTransferTxHash = await walletClient.writeContract({
-      address: CREDIT_ADDRESS,
-      abi: erc20Abi,
-      functionName: "transfer",
-      args: [vaultAddress, creditReceived],
-    });
-    const creditTransferReceipt = await publicClient.waitForTransactionReceipt({
-      hash: creditTransferTxHash,
-    });
-    if (creditTransferReceipt.status !== "success") {
-      throw new Error(`CREDIT transfer to vault reverted: ${creditTransferTxHash}`);
     }
   }
 
@@ -461,7 +432,6 @@ export async function executeSealedBasketDeposit(params: {
     pullTxHash,
     swapTxHash,
     creditBuyTxHash,
-    creditTransferTxHash,
     transferTxHash,
   };
 }
