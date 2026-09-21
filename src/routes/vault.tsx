@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { usePageMeta } from "@/lib/i18n/use-page-meta";
 import { VaultView } from "@/components/heirloom/vault-view";
 
 export const Route = createFileRoute("/vault")({
@@ -26,6 +27,7 @@ export const Route = createFileRoute("/vault")({
 });
 
 function VaultPage() {
+  usePageMeta("vault");
   return (
     <main id="main" className="product-page">
       <VaultView />

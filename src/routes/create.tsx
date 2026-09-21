@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { usePageMeta } from "@/lib/i18n/use-page-meta";
 import { Builder } from "@/components/heirloom/builder";
 
 export const Route = createFileRoute("/create")({
@@ -24,6 +25,7 @@ export const Route = createFileRoute("/create")({
 });
 
 function CreatePage() {
+  usePageMeta("create");
   return (
     <main id="main" className="product-page">
       <Builder />

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { usePageMeta } from "@/lib/i18n/use-page-meta";
 import { Dashboard } from "@/components/heirloom/dashboard";
 
 export const Route = createFileRoute("/app")({
@@ -23,6 +24,7 @@ export const Route = createFileRoute("/app")({
 });
 
 function AppPage() {
+  usePageMeta("app");
   return (
     <main id="main" className="product-page">
       <Dashboard />
