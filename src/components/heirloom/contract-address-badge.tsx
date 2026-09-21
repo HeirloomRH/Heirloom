@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { Copy, Check, ArrowUpRight } from "lucide-react";
 import { useT } from "@/lib/i18n";
+import {
+  CONTRACT_ADDRESS,
+  CONTRACT_DEXSCREENER_URL,
+  shortenAddress,
+} from "@/lib/heirloom/contract";
 
 interface ContractAddressBadgeProps {
   theme?: "light" | "dark";
@@ -15,7 +20,7 @@ export function ContractAddressBadge({
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(t.contractBadge.comingSoon);
+    navigator.clipboard.writeText(CONTRACT_ADDRESS);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -24,7 +29,9 @@ export function ContractAddressBadge({
     <div className={`ca-badge ca-badge-${theme} ${className}`}>
       <div className="ca-badge-left">
         <span className="ca-badge-tag">{t.contractBadge.tag}</span>
-        <span className="ca-badge-address">{t.contractBadge.comingSoon}</span>
+        <span className="ca-badge-address" title={CONTRACT_ADDRESS}>
+          {shortenAddress(CONTRACT_ADDRESS)}
+        </span>
       </div>
       <div className="ca-badge-actions">
         <button
@@ -40,7 +47,7 @@ export function ContractAddressBadge({
           </span>
         </button>
         <a
-          href="https://dexscreener.com"
+          href={CONTRACT_DEXSCREENER_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="ca-btn ca-dex-btn"
