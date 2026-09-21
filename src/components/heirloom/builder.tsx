@@ -13,10 +13,13 @@ import {
   Sprout,
   AlertTriangle,
   Wallet,
+  EyeOff,
+  Shield,
 } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { createTrust } from "@/lib/api";
+import { generateGrantorRootKey, deriveKeyLadderTree, encryptClientData } from "@/lib/heirloom/keyladder";
 import { ConnectButton } from "../wallet/ConnectButton";
 import { Dialog } from "./product";
 import { AssetIcon } from "./asset-icon";
@@ -58,6 +61,7 @@ export function Builder() {
     { date: "2043-06-18", percent: 50 },
   ]);
   const [mode, setMode] = useState<"revocable" | "irrevocable">("revocable");
+  const [privacyMode, setPrivacyMode] = useState<"public" | "private">("private");
   const [heartbeat, setHeartbeat] = useState(180);
   const [guardian, setGuardian] = useState("");
   const [letter, setLetter] = useState("");
@@ -153,6 +157,29 @@ export function Builder() {
     setError("");
 
     try {
+      let cipherLetter: string | undefined;
+      let cipherTerms: string | undefined;
+      let termsHash: string | undefined;
+
+      if (privacyMode === "private") {
+        const rootKey = await generateGrantorRootKey(grantorAddr);
+        const ladder = await deriveKeyLadderTree(rootKey, name.trim());
+        termsHash = ladder.trustKey;
+        if (letter.trim()) {
+          cipherLetter = await encryptClientData(letter.trim(), ladder.vkView);
+        }
+        cipherTerms = await encryptClientData(
+          JSON.stringify({
+            name: name.trim(),
+            beneficiary: beneficiary.trim(),
+            wallet: wallet.trim(),
+            allocations,
+            schedule,
+          }),
+          ladder.vkView
+        );
+      }
+
       const res = await createTrust({
         name: name.trim(),
         grantorAddress: grantorAddr,
@@ -170,6 +197,10 @@ export function Builder() {
           unlockTimestamp: new Date(s.date).toISOString(),
           percentageBps: s.percent * 100,
         })),
+        mode: privacyMode,
+        termsHash,
+        cipherTerms,
+        cipherLetter,
       });
 
       const v: Vault = {

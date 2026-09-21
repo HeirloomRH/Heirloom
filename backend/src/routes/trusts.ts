@@ -73,6 +73,10 @@ trustsRouter.post("/", async (req: Request, res: Response) => {
       guardians = [],
       assets = [],
       vestingSchedules = [],
+      mode = "public",
+      termsHash,
+      cipherTerms,
+      cipherLetter,
     } = req.body;
 
     // Validation
@@ -100,7 +104,7 @@ trustsRouter.post("/", async (req: Request, res: Response) => {
     const vaultAddress = getVaultAddress(vaultIndex);
 
     // 2. Encrypt letter if provided
-    const encryptedLetter = letterToBeneficiary ? encryptText(letterToBeneficiary) : null;
+    const encryptedLetter = cipherLetter || (letterToBeneficiary ? encryptText(letterToBeneficiary) : null);
 
     // 3. Compute initial deadline
     const windowSecs = Math.max(300, parseInt(heartbeatWindowSeconds, 10) || 2592000); // minimum 5 mins
@@ -110,11 +114,11 @@ trustsRouter.post("/", async (req: Request, res: Response) => {
       `INSERT INTO trusts (
         name, grantor_address, beneficiary_address, vault_index, vault_address,
         is_revocable, status, heartbeat_window_seconds, last_heartbeat_at,
-        heartbeat_deadline, encrypted_letter, terms_json
+        heartbeat_deadline, encrypted_letter, terms_json, mode, terms_hash, cipher_terms, cipher_letter
       ) VALUES (
         $1, $2, $3, $4, $5,
         $6, 'pending_funding', $7, NOW(),
-        $8, $9, $10
+        $8, $9, $10, $11, $12, $13, $14
       ) RETURNING id, created_at, status, heartbeat_deadline`,
       [
         name.trim(),
@@ -131,6 +135,10 @@ trustsRouter.post("/", async (req: Request, res: Response) => {
           assetsCount: assets.length,
           vestingStepsCount: vestingSchedules.length,
         }),
+        mode,
+        termsHash || null,
+        cipherTerms || null,
+        encryptedLetter,
       ]
     );
 

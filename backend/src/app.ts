@@ -5,6 +5,7 @@ import { healthRouter } from "./routes/health.js";
 import { tokensRouter } from "./routes/tokens.js";
 import { trustsRouter } from "./routes/trusts.js";
 import { telegramRouter } from "./routes/telegram.js";
+import { privacyRouter } from "./routes/privacy.js";
 
 export const app = express();
 
@@ -23,6 +24,10 @@ app.use("/tokens", tokensRouter);
 app.use("/api/trusts", trustsRouter);
 app.use("/trusts", trustsRouter);
 
+// Privacy Expansion (H-0 & H-P) routes
+app.use("/api", privacyRouter);
+app.use("/", privacyRouter);
+
 // Telegram Bot Webhook & Integration routes
 app.use("/api/telegram", telegramRouter);
 app.use("/telegram", telegramRouter);
@@ -37,10 +42,18 @@ app.get("/", (_req, res) => {
       name: "Robinhood Chain",
       chainId: 4663,
     },
+    privacy: {
+      h0OnChainTrust: "live",
+      hpShieldedPool: "active",
+    },
     endpoints: {
       health: "/health",
       tokens: "/api/tokens",
       trusts: "/api/trusts",
+      private: "/api/private",
+      solvency: "/api/proofs/solvency",
+      migration: "/api/migration/status",
     },
   });
 });
+
