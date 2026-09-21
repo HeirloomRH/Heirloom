@@ -40,7 +40,7 @@ We are currently focused on **Phase H1: Trust Builder & Core Vaults**. High-prio
 
 ### Clone and Install
 ```bash
-git clone https://github.com/notadeveloper7/heirloom.git
+git clone https://github.com/HeirloomRH/Heirloom.git
 cd heirloom
 
 # Install frontend dependencies
