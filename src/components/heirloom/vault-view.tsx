@@ -47,25 +47,33 @@ import {
   dateLabel,
   type Vault,
 } from "@/lib/heirloom/vault";
+import { useT } from "@/lib/i18n";
 
 
-function getRelTime(dateStr: string): string {
+// Tab identity is a stable key; only the label is translated.
+const TAB_KEYS = ["portfolio", "schedule", "letter"] as const;
+type TabKey = (typeof TAB_KEYS)[number];
+
+type ScheduleCopy = ReturnType<typeof useT>["vault"]["schedule"];
+
+function getRelTime(dateStr: string, copy: ScheduleCopy): string {
   try {
     const target = new Date(dateStr + "T00:00:00Z");
     const now = new Date();
     const diffDays = Math.ceil((target.getTime() - now.getTime()) / 86400000);
-    if (diffDays <= 0) return "Milestone reached";
-    if (diffDays < 30) return `in ${diffDays} days`;
+    if (diffDays <= 0) return copy.milestoneReached;
+    if (diffDays < 30) return copy.inDays(diffDays);
     const diffMonths = Math.ceil(diffDays / 30);
-    if (diffMonths < 12) return `in ${diffMonths} months`;
+    if (diffMonths < 12) return copy.inMonths(diffMonths);
     const diffYears = (diffDays / 365).toFixed(1);
-    return `in ~${diffYears.replace(".0", "")} years`;
+    return copy.inYears(diffYears.replace(".0", ""));
   } catch {
     return "";
   }
 }
 
 export function VaultView() {
+  const t = useT();
   const search = useSearch({ strict: false }) as { id?: string };
   const navigate = useNavigate();
   const id = search.id || "sample";
@@ -80,7 +88,7 @@ export function VaultView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [tab, setTab] = useState("Portfolio");
+  const [tab, setTab] = useState<TabKey>("portfolio");
   const [dialog, setDialog] = useState("");
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -130,12 +138,12 @@ export function VaultView() {
         const mapped: Vault = {
           id: data.trust.id,
           name: data.trust.name,
-          beneficiary: "Beneficiary",
+          beneficiary: t.vault.beneficiaryFallback,
           wallet: data.trust.beneficiaryAddress,
           amount: 0,
           allocations: data.assets.map((a) => ({
             symbol: a.symbol,
-            name: a.symbol + " Token",
+            name: a.symbol + t.vault.tokenSuffix,
             weight: Math.round(a.target_allocation_bps / 100),
           })),
           schedule: data.vestingSchedules.map((s) => ({
@@ -166,7 +174,7 @@ export function VaultView() {
         if (local) {
           setVault(local);
         } else {
-          setError(e.message || "Failed to load trust from Robinhood Chain.");
+          setError(e.message || t.vault.errors.loadFailed);
         }
       }
     } else {
@@ -189,16 +197,16 @@ export function VaultView() {
   const handleDeposit = async () => {
     if (!realTrust || !vault?.vaultAddress) return;
     if (!address) {
-      setError("Connect your wallet to deposit assets.");
+      setError(t.vault.errors.connectToDeposit);
       return;
     }
     if (!depositAsset) {
-      setError("Please select an asset to deposit.");
+      setError(t.vault.errors.selectAsset);
       return;
     }
     const amtNum = parseFloat(depositAmount);
     if (!depositAmount || isNaN(amtNum) || amtNum <= 0) {
-      setError("Please enter a valid amount greater than 0.");
+      setError(t.vault.errors.invalidAmount);
       return;
     }
 
@@ -237,7 +245,7 @@ export function VaultView() {
       setDepositTxHash(txHash);
       setDialog("deposit_pending");
     } catch (e: any) {
-      const msg = e?.shortMessage || e?.message || "Transaction failed or was rejected.";
+      const msg = e?.shortMessage || e?.message || t.vault.errors.txFailed;
       setError(msg);
     } finally {
       setBusy(false);
@@ -262,12 +270,12 @@ export function VaultView() {
   const handleHeartbeat = async () => {
     if (!realTrust) return;
     if (!address) {
-      setError("Connect the Grantor wallet to submit a check-in.");
+      setError(t.vault.errors.connectGrantor);
       return;
     }
 
     if (address.toLowerCase() !== realTrust.trust.grantorAddress.toLowerCase()) {
-      setError("Only the Grantor wallet can check in to extend the dead-man's switch.");
+      setError(t.vault.errors.onlyGrantor);
       return;
     }
 
@@ -308,10 +316,10 @@ export function VaultView() {
         signature,
       });
 
-      setNotice("Heartbeat confirmed! Dead-man's switch deadline extended.");
+      setNotice(t.vault.success.heartbeat);
       await loadData();
     } catch (e: any) {
-      setError(e.message || "Failed to submit heartbeat signature.");
+      setError(e.message || t.vault.errors.heartbeatFailed);
     } finally {
       setBusy(false);
     }
@@ -324,10 +332,10 @@ export function VaultView() {
     setError("");
     try {
       const res = await verifyFunding(realTrust.trust.id);
-      setNotice(res.message || "Corpus deposit verified on Robinhood Chain!");
+      setNotice(res.message || t.vault.success.depositVerified);
       await loadData();
     } catch (e: any) {
-      setError(e.message || "No new deposit confirmed on-chain yet.");
+      setError(e.message || t.vault.errors.noDeposit);
     } finally {
       setBusy(false);
     }
@@ -344,7 +352,7 @@ export function VaultView() {
       setUnlockedLetter(res.letter);
       setDialog("letter");
     } catch (e: any) {
-      setError(e.message || "Failed to unlock encrypted letter.");
+      setError(e.message || t.vault.errors.unlockFailed);
     } finally {
       setBusy(false);
     }
@@ -354,7 +362,7 @@ export function VaultView() {
   const handleClaim = async (symbol: string, scheduleId?: string) => {
     if (!realTrust) return;
     if (!address) {
-      setError("Please connect beneficiary wallet to claim.");
+      setError(t.vault.errors.connectBeneficiary);
       return;
     }
     setBusy(true);
@@ -371,7 +379,7 @@ export function VaultView() {
       setNotice(`Successfully claimed ${res.amount} ${res.token}! Tx: ${res.txHash.slice(0, 10)}...`);
       await loadData();
     } catch (e: any) {
-      setError(e.message || "Failed to execute claim payout.");
+      setError(e.message || t.vault.errors.claimFailed);
     } finally {
       setBusy(false);
     }
@@ -380,7 +388,7 @@ export function VaultView() {
   if (loading) {
     return (
       <div className="shell loading" role="status">
-        Loading your trust from Robinhood Chain…
+        {t.vault.loading}
       </div>
     );
   }
@@ -389,10 +397,10 @@ export function VaultView() {
     return (
       <div className="shell">
         <div className="empty-state">
-          <h1 className="product-title">This trust isn't here.</h1>
-          <p>{error || "It may not exist, or the backend is unreachable."}</p>
+          <h1 className="product-title">{t.vault.notFoundTitle}</h1>
+          <p>{error || t.vault.notFoundBody}</p>
           <Link className="button primary" to="/app">
-            Back to workspace <ArrowLeft size={15} />
+            {t.vault.backToWorkspace} <ArrowLeft size={15} />
           </Link>
         </div>
       </div>
@@ -418,16 +426,20 @@ export function VaultView() {
 
       <div className="product-breadcrumb">
         <Link to="/app">
-          <ArrowLeft size={13} /> Your workspace
+          <ArrowLeft size={13} /> {t.vault.breadcrumbBack}
         </Link>
-        <span>{id === "sample" ? "SAMPLE PREVIEW" : "LIVE TRUST VAULT"}</span>
+        <span>
+          {id === "sample"
+            ? t.vault.breadcrumbSample
+            : t.vault.breadcrumbLive}
+        </span>
       </div>
 
       <div className="trust-heading">
         <div>
           <div className="trust-kicker">
             <span className="avatar">{vault.beneficiary[0]}</span>
-            <span>FOR {vault.beneficiary.toUpperCase()}</span>
+            <span>{t.vault.forPrefix(vault.beneficiary.toUpperCase())}</span>
             <span
               className={`vault-status ${
                 isSuccessionTriggered
@@ -438,16 +450,14 @@ export function VaultView() {
               }`}
             >
               {isSuccessionTriggered
-                ? "Succession Triggered"
+                ? t.vault.status.successionTriggered
                 : vault.corpusFunded
-                  ? "Active & Funded"
-                  : "Pending Funding"}
+                  ? t.vault.status.activeFunded
+                  : t.vault.status.pendingFunding}
             </span>
           </div>
           <h1 className="product-title">{vault.name}</h1>
-          <p className="product-description">
-            Generational wealth, programmed in code on Robinhood Chain.
-          </p>
+          <p className="product-description">{t.vault.tagline}</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -456,9 +466,10 @@ export function VaultView() {
               className="button secondary"
               onClick={handleVerifyDeposit}
               disabled={busy}
-              title="Refresh balances from Robinhood Chain"
+              title={t.vault.refreshTitle}
             >
-              <RefreshCw size={14} className={busy ? "animate-spin" : ""} /> Refresh
+              <RefreshCw size={14} className={busy ? "animate-spin" : ""} />{" "}
+              {t.vault.refresh}
             </button>
           )}
           <button
@@ -466,13 +477,13 @@ export function VaultView() {
             onClick={() => {
               try {
                 exportVault(vault);
-                setNotice("Trust summary prepared for download.");
+                setNotice(t.vault.exportSuccess);
               } catch {
-                setError("Download failed.");
+                setError(t.vault.exportFailed);
               }
             }}
           >
-            <Download size={14} /> Export
+            <Download size={14} /> {t.vault.export}
           </button>
         </div>
       </div>
@@ -483,7 +494,7 @@ export function VaultView() {
           <div className="vault-address-card-header">
             <div className="vault-address-card-title">
               <ShieldCheck size={15} />
-              <span>Vault Address</span>
+              <span>{t.vault.addressCard.title}</span>
               <span className="vault-address-badge">#{vault.vaultIndex ?? 1}</span>
             </div>
             <div className="vault-address-card-actions">
@@ -492,7 +503,7 @@ export function VaultView() {
                 onClick={() => copyAddress(vault.vaultAddress!)}
               >
                 {copied ? <Check size={13} /> : <Copy size={13} />}
-                {copied ? "Copied" : "Copy"}
+                {copied ? t.vault.addressCard.copied : t.vault.addressCard.copy}
               </button>
               <a
                 href={`${ROBINHOOD_EXPLORER_URL}/address/${vault.vaultAddress}`}
@@ -500,7 +511,7 @@ export function VaultView() {
                 rel="noreferrer"
                 className="button secondary"
               >
-                <ExternalLink size={13} /> Explorer
+                <ExternalLink size={13} /> {t.vault.addressCard.explorer}
               </a>
               {realTrust && (
                 <button
@@ -513,7 +524,7 @@ export function VaultView() {
                     setDialog("deposit");
                   }}
                 >
-                  <SendHorizonal size={13} /> Deposit
+                  <SendHorizonal size={13} /> {t.vault.addressCard.deposit}
                 </button>
               )}
             </div>
@@ -521,7 +532,8 @@ export function VaultView() {
           <p className="vault-address-mono">{vault.vaultAddress}</p>
           {!vault.corpusFunded && (
             <div className="vault-address-funding-hint">
-              <strong>Activate this trust:</strong> Deposit tokenized assets directly to this vault address to fund it. Use the <em>Deposit</em> button above, or transfer manually from your wallet.
+              <strong>{t.vault.addressCard.activateLead}</strong>{" "}
+              {t.vault.addressCard.activateBody}
             </div>
           )}
         </div>
@@ -532,7 +544,7 @@ export function VaultView() {
           {/* Live On-Chain Portfolio Summary */}
           <div className="portfolio-summary">
             <div className="spread">
-              <span className="eyebrow">ON-CHAIN HOLDINGS & RESERVES</span>
+              <span className="eyebrow">{t.vault.summary.eyebrow}</span>
             </div>
 
             {realTrust ? (
@@ -557,7 +569,7 @@ export function VaultView() {
                   ))}
                 {realTrust.liveBalances.every((b) => BigInt(b.balanceRaw) === 0n) && (
                   <p className="font-mono text-sm" style={{ color: "#7b6c56" }}>
-                    0.00 assets currently held in vault. Pending deposit.
+                    {t.vault.summary.noAssets}
                   </p>
                 )}
               </div>
@@ -569,38 +581,48 @@ export function VaultView() {
             )}
 
             <div className="portfolio-summary-bottom mt-3">
-              <span>{vault.allocations.length} configured assets</span>
-              <span className="capitalize">
-                <LockKeyhole size={12} /> {vault.mode} terms
+              <span>
+                {t.vault.summary.configuredAssets(vault.allocations.length)}
+              </span>
+              <span>
+                <LockKeyhole size={12} />{" "}
+                {vault.mode === "revocable"
+                  ? t.vault.summary.termsRevocable
+                  : t.vault.summary.termsIrrevocable}
               </span>
             </div>
           </div>
 
           {/* Tabs */}
-          <div className="trust-tabs" role="tablist" aria-label="Trust details">
-            {["Portfolio", "Schedule", "Letter"].map((t) => (
+          <div
+            className="trust-tabs"
+            role="tablist"
+            aria-label={t.vault.tabsAriaLabel}
+          >
+            {TAB_KEYS.map((key) => (
               <button
-                key={t}
+                key={key}
                 role="tab"
-                id={"tab-" + t}
-                aria-selected={tab === t}
-                tabIndex={tab === t ? 0 : -1}
-                onClick={() => setTab(t)}
+                id={"tab-" + key}
+                aria-selected={tab === key}
+                tabIndex={tab === key ? 0 : -1}
+                onClick={() => setTab(key)}
               >
-                {t}
-                {t === "Letter" && (vault.letter || realTrust?.trust.hasEncryptedLetter) && (
-                  <span className="tiny-square" />
-                )}
+                {t.vault.tabs[key]}
+                {key === "letter" &&
+                  (vault.letter || realTrust?.trust.hasEncryptedLetter) && (
+                    <span className="tiny-square" />
+                  )}
               </button>
             ))}
           </div>
 
           <div className="trust-panel" role="tabpanel">
-            {tab === "Portfolio" && (
+            {tab === "portfolio" && (
               <>
                 <div className="spread panel-title">
-                  <h2>A foundation for tomorrow.</h2>
-                  <span className="micro">TARGET ASSET ALLOCATIONS</span>
+                  <h2>{t.vault.portfolio.title}</h2>
+                  <span className="micro">{t.vault.portfolio.micro}</span>
                 </div>
 
                 <div className="allocation-line large">
@@ -624,9 +646,9 @@ export function VaultView() {
                 <table className="holdings-table">
                   <thead>
                     <tr>
-                      <th>Asset</th>
-                      <th>Allocation</th>
-                      <th>Live Vault Balance</th>
+                      <th>{t.vault.portfolio.colAsset}</th>
+                      <th>{t.vault.portfolio.colAllocation}</th>
+                      <th>{t.vault.portfolio.colBalance}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -664,14 +686,14 @@ export function VaultView() {
               </>
             )}
 
-            {tab === "Schedule" && (
+            {tab === "schedule" && (
               <>
                 <div className="spread panel-title">
-                  <h2>Good things, in their own time.</h2>
-                  <span className="micro">VESTING CLIFFS & TIMELINE</span>
+                  <h2>{t.vault.schedule.title}</h2>
+                  <span className="micro">{t.vault.schedule.micro}</span>
                 </div>
                 <p className="field-hint" style={{ marginTop: "-6px", marginBottom: "16px" }}>
-                  Vesting cliffs unlock assets on predetermined milestone dates or immediately upon succession execution.
+                  {t.vault.schedule.hint}
                 </p>
 
                 {/* Multi-segment allocation line matching Portfolio design */}
@@ -690,7 +712,11 @@ export function VaultView() {
                             : ["#9ea881", "#e0b182", "#a89cb9", "#8ea9af"][i % 4],
                           opacity: r.claimed || isPassed ? 1 : 0.85,
                         }}
-                        title={`Cliff 0${i + 1}: ${r.percent}% (${dateLabel(r.date)})`}
+                        title={t.vault.schedule.cliffTooltip(
+                          "0" + (i + 1),
+                          r.percent,
+                          dateLabel(r.date),
+                        )}
                       />
                     );
                   })}
@@ -713,22 +739,24 @@ export function VaultView() {
                         <div className="cliff-card-header">
                           <div className="cliff-header-left">
                             <span className="cliff-number-badge">
-                              Cliff {String(i + 1).padStart(2, "0")} · Milestone
+                              {t.vault.schedule.cliffBadge(
+                                String(i + 1).padStart(2, "0"),
+                              )}
                             </span>
                             <h3 className="cliff-date-title">{dateLabel(r.date)}</h3>
                             <span className="cliff-rel-time">
                               {isClaimed
-                                ? "Transferred to beneficiary"
+                                ? t.vault.schedule.transferred
                                 : isPassed
-                                ? "Milestone reached (Unlocked)"
-                                : getRelTime(r.date)}
+                                ? t.vault.schedule.reachedUnlocked
+                                : getRelTime(r.date, t.vault.schedule)}
                             </span>
                           </div>
 
                           <div className="cliff-header-right">
                             {isClaimed ? (
                               <span className="cliff-status-pill claimed">
-                                <Check size={13} /> Claimed
+                                <Check size={13} /> {t.vault.schedule.claimed}
                               </span>
                             ) : canClaim ? (
                               <button
@@ -737,15 +765,16 @@ export function VaultView() {
                                 className="button primary"
                                 style={{ padding: "6px 14px", fontSize: "11px" }}
                               >
-                                <Coins size={13} /> Claim Milestone
+                                <Coins size={13} />{" "}
+                                {t.vault.schedule.claimMilestone}
                               </button>
                             ) : isPassed ? (
                               <span className="cliff-status-pill unlocked">
-                                <LockOpen size={13} /> Unlocked
+                                <LockOpen size={13} /> {t.vault.schedule.unlocked}
                               </span>
                             ) : (
                               <span className="cliff-status-pill locked">
-                                <LockKeyhole size={13} /> Locked
+                                <LockKeyhole size={13} /> {t.vault.schedule.locked}
                               </span>
                             )}
                           </div>
@@ -753,13 +782,19 @@ export function VaultView() {
 
                         <div className="cliff-details-grid">
                           <div className="cliff-metric-col">
-                            <span className="cliff-metric-label">Corpus Share</span>
+                            <span className="cliff-metric-label">
+                              {t.vault.schedule.corpusShare}
+                            </span>
                             <strong className="cliff-metric-value">{r.percent}%</strong>
-                            <span className="cliff-metric-sub">of total trust assets</span>
+                            <span className="cliff-metric-sub">
+                              {t.vault.schedule.corpusShareSub}
+                            </span>
                           </div>
 
                           <div className="cliff-metric-col">
-                            <span className="cliff-metric-label">Token Release</span>
+                            <span className="cliff-metric-label">
+                              {t.vault.schedule.tokenRelease}
+                            </span>
                             {fundedBalances.length > 0 ? (
                               <div className="cliff-token-badges">
                                 {fundedBalances.map((b) => {
@@ -783,18 +818,22 @@ export function VaultView() {
                             ) : (
                               <span className="cliff-token-pending">
                                 {vault.amount > 0
-                                  ? `${money((vault.amount * r.percent) / 100)} (pending on-chain deposit)`
-                                  : "Pending on-chain deposit"}
+                                  ? t.vault.schedule.pendingDepositWithAmount(
+                                      money((vault.amount * r.percent) / 100),
+                                    )
+                                  : t.vault.schedule.pendingDeposit}
                               </span>
                             )}
                           </div>
 
                           <div className="cliff-metric-col">
-                            <span className="cliff-metric-label">Release Trigger</span>
+                            <span className="cliff-metric-label">
+                              {t.vault.schedule.releaseTrigger}
+                            </span>
                             <p className="cliff-trigger-text">
                               {isPassed
-                                ? "Calendar milestone reached"
-                                : "Calendar unlock or upon Grantor succession execution"}
+                                ? t.vault.schedule.triggerReached
+                                : t.vault.schedule.triggerPending}
                             </p>
                           </div>
                         </div>
@@ -805,12 +844,12 @@ export function VaultView() {
               </>
             )}
 
-            {tab === "Letter" && (
+            {tab === "letter" && (
               <>
                 {unlockedLetter ? (
                   <div className="trust-letter">
                     <span className="eyebrow">
-                      <Mail size={12} /> DECRYPTED PERSONAL LETTER
+                      <Mail size={12} /> {t.vault.letter.decryptedEyebrow}
                     </span>
                     <p className="whitespace-pre-line text-sm leading-relaxed" style={{ color: "var(--ink)" }}>{unlockedLetter}</p>
                   </div>
@@ -818,24 +857,24 @@ export function VaultView() {
                   <div className="letter-empty text-center py-6">
                     <LockKeyhole size={28} className="mx-auto text-[#c4a47c]" />
                     <h3 className="mt-2 text-base font-medium" style={{ color: "var(--ink)" }}>
-                      Personal Letter Sealed On-Chain
+                      {t.vault.letter.sealedTitle}
                     </h3>
                     <p className="mt-1 text-xs text-[#8d7c68]">
-                      Encrypted with AES-256-GCM. Unlocks for the beneficiary when active or triggered.
+                      {t.vault.letter.sealedBody}
                     </p>
                     <button
                       onClick={handleUnlockLetter}
                       disabled={busy}
                       className="button secondary mt-4"
                     >
-                      <Mail size={14} /> Unlock & Read Letter
+                      <Mail size={14} /> {t.vault.letter.unlockCta}
                     </button>
                   </div>
                 ) : (
                   <div className="letter-empty">
                     <Mail size={25} />
-                    <h3>A story still to be written.</h3>
-                    <p>No personal letter was attached to this trust.</p>
+                    <h3>{t.vault.letter.emptyTitle}</h3>
+                    <p>{t.vault.letter.emptyBody}</p>
                   </div>
                 )}
               </>
@@ -848,23 +887,21 @@ export function VaultView() {
           {/* Dead-Man's Switch Heartbeat Card */}
           <div className="trust-side-card heartbeat">
             <div className="spread">
-              <h3>Dead-Man's Switch</h3>
+              <h3>{t.vault.heartbeat.title}</h3>
               <Heart size={17} className={isSuccessionTriggered ? "text-rose-500" : "text-emerald-400"} />
             </div>
 
             <strong>
-              {daysRemaining} <span>days remaining</span>
+              {daysRemaining} <span>{t.vault.heartbeat.daysRemaining}</span>
             </strong>
 
             <p className="text-xs text-[#8d7c68]">
               {isSuccessionTriggered ? (
                 <span className="text-rose-400 font-medium">
-                  Heartbeat window missed. Succession plan is now active for the beneficiary.
+                  {t.vault.heartbeat.missed}
                 </span>
               ) : (
-                <>
-                  Window: {vault.heartbeat} days. If a check-in is missed, succession executes automatically.
-                </>
+                <>{t.vault.heartbeat.window(vault.heartbeat)}</>
               )}
             </p>
 
@@ -874,7 +911,8 @@ export function VaultView() {
                 onClick={handleHeartbeat}
                 disabled={busy}
               >
-                <Heart size={14} /> {busy ? "Signing..." : "Check In (Gasless)"}
+                <Heart size={14} />{" "}
+                {busy ? t.vault.heartbeat.signing : t.vault.heartbeat.checkIn}
               </button>
             )}
           </div>
@@ -882,17 +920,21 @@ export function VaultView() {
           {/* Connected Wallet Info */}
           <div className="trust-side-card">
             <div className="spread">
-              <h3>Your Access</h3>
+              <h3>{t.vault.access.title}</h3>
               <ShieldCheck size={16} />
             </div>
 
             <p className="text-xs text-[#c4bcaf]">
               {isGrantor ? (
-                <span className="text-emerald-400 font-medium">You are the Grantor (Creator)</span>
+                <span className="text-emerald-400 font-medium">
+                  {t.vault.access.isGrantor}
+                </span>
               ) : isBeneficiary ? (
-                <span className="text-blue-400 font-medium">You are the Beneficiary</span>
+                <span className="text-blue-400 font-medium">
+                  {t.vault.access.isBeneficiary}
+                </span>
               ) : (
-                "Connect your wallet to check in or claim"
+                t.vault.access.connectPrompt
               )}
             </p>
 
@@ -911,7 +953,7 @@ export function VaultView() {
                   onClick={openConnectModal}
                   className="button primary w-full justify-center"
                 >
-                  Connect Wallet
+                  {t.vault.access.connectWallet}
                 </button>
               )}
             </div>
@@ -921,7 +963,10 @@ export function VaultView() {
 
       {/* Decrypted Letter Dialog */}
       {dialog === "letter" && unlockedLetter && (
-        <Dialog title="Letter to the Beneficiary" onClose={() => setDialog("")}>
+        <Dialog
+          title={t.vault.letter.dialogTitle}
+          onClose={() => setDialog("")}
+        >
           <div className="dialog-body">
             <p className="whitespace-pre-line text-sm" style={{ color: "var(--ink)" }}>{unlockedLetter}</p>
           </div>
@@ -930,7 +975,7 @@ export function VaultView() {
 
       {/* Success Notice Modal */}
       {notice && (
-        <Dialog title="Success" onClose={() => setNotice("")}>
+        <Dialog title={t.vault.notices.successTitle} onClose={() => setNotice("")}>
           <div className="dialog-body">
             <div className="flex items-start gap-3">
               <Check size={20} className="text-emerald-500 mt-0.5 shrink-0" />
@@ -940,7 +985,7 @@ export function VaultView() {
             </div>
             <div className="dialog-actions">
               <button className="button primary" onClick={() => setNotice("")}>
-                Done
+                {t.vault.notices.done}
               </button>
             </div>
           </div>
@@ -949,7 +994,7 @@ export function VaultView() {
 
       {/* Error Modal */}
       {error && (
-        <Dialog title="Something went wrong" onClose={() => setError("")}>
+        <Dialog title={t.vault.notices.errorTitle} onClose={() => setError("")}>
           <div className="dialog-body">
             <div className="flex items-start gap-3">
               <AlertTriangle size={20} className="text-rose-500 mt-0.5 shrink-0" />
@@ -959,7 +1004,7 @@ export function VaultView() {
             </div>
             <div className="dialog-actions">
               <button className="button secondary" onClick={() => setError("")}>
-                Dismiss
+                {t.vault.notices.dismiss}
               </button>
             </div>
           </div>
@@ -968,14 +1013,16 @@ export function VaultView() {
 
       {/* Deposit Form Modal */}
       {dialog === "deposit" && realTrust && vault?.vaultAddress && (
-        <Dialog title="Deposit Assets" onClose={() => setDialog("")}>
+        <Dialog title={t.vault.deposit.title} onClose={() => setDialog("")}>
           <div className="dialog-body">
             <p className="text-sm" style={{ color: "var(--ink)", marginBottom: "1rem" }}>
-              Select an asset and amount to deposit into this vault on Robinhood Chain. Your wallet will prompt you to sign the transaction.
+              {t.vault.deposit.intro}
             </p>
 
             <div className="deposit-field">
-              <label className="deposit-label" htmlFor="deposit-asset">Asset</label>
+              <label className="deposit-label" htmlFor="deposit-asset">
+                {t.vault.deposit.assetLabel}
+              </label>
               <select
                 id="deposit-asset"
                 className="deposit-select"
@@ -993,11 +1040,12 @@ export function VaultView() {
             <div className="deposit-field">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
                 <label className="deposit-label" htmlFor="deposit-amount" style={{ marginBottom: 0 }}>
-                  Amount
+                  {t.vault.deposit.amountLabel}
                 </label>
                 {userTokenBalance !== undefined && (
                   <span style={{ fontFamily: "var(--mono)", fontSize: "11px", color: "var(--ink)", opacity: 0.8 }}>
-                    Wallet: <strong>{Number(userTokenBalance).toLocaleString(undefined, { maximumFractionDigits: 4 })}</strong> {depositAsset}
+                    {t.vault.deposit.walletPrefix}{" "}
+                    <strong>{Number(userTokenBalance).toLocaleString(undefined, { maximumFractionDigits: 4 })}</strong> {depositAsset}
                     {Number(userTokenBalance) > 0 && (
                       <button
                         type="button"
@@ -1015,7 +1063,7 @@ export function VaultView() {
                         }}
                         onClick={() => setDepositAmount(userTokenBalance)}
                       >
-                        MAX
+                        {t.vault.deposit.max}
                       </button>
                     )}
                   </span>
@@ -1027,19 +1075,21 @@ export function VaultView() {
                 type="number"
                 min="0"
                 step="any"
-                placeholder="e.g. 10.5"
+                placeholder={t.vault.deposit.amountPlaceholder}
                 value={depositAmount}
                 onChange={(e) => setDepositAmount(e.target.value)}
               />
               {userTokenBalanceRaw !== undefined && userTokenBalanceRaw === 0n && (
                 <p style={{ fontSize: "11px", color: "#b91c1c", marginTop: "6px" }}>
-                  Your connected wallet has 0 {depositAsset} on Robinhood Chain. You must fund your wallet with {depositAsset} first before depositing.
+                  {t.vault.deposit.zeroBalance(depositAsset)}
                 </p>
               )}
             </div>
 
             <div className="deposit-destination">
-              <span className="deposit-destination-label">To vault</span>
+              <span className="deposit-destination-label">
+                {t.vault.deposit.toVault}
+              </span>
               <span className="deposit-destination-address">{vault.vaultAddress}</span>
             </div>
 
@@ -1049,14 +1099,20 @@ export function VaultView() {
                 onClick={() => setDialog("")}
                 disabled={busy}
               >
-                Cancel
+                {t.vault.deposit.cancel}
               </button>
               <button
                 className="button primary"
                 onClick={handleDeposit}
                 disabled={busy || !depositAsset || !depositAmount}
               >
-                {busy ? "Sending…" : <><SendHorizonal size={14} /> Send Deposit</>}
+                {busy ? (
+                  t.vault.deposit.sending
+                ) : (
+                  <>
+                    <SendHorizonal size={14} /> {t.vault.deposit.send}
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -1065,12 +1121,12 @@ export function VaultView() {
 
       {/* Deposit Pending Modal */}
       {dialog === "deposit_pending" && (
-        <Dialog title="Transaction Submitted" onClose={() => {}}>
+        <Dialog title={t.vault.deposit.pendingTitle} onClose={() => {}}>
           <div className="dialog-body">
             <div className="deposit-pending-state">
               <div className="deposit-spinner" />
               <p className="text-sm" style={{ color: "var(--ink)" }}>
-                Your deposit transaction has been broadcast to Robinhood Chain. Waiting for confirmation…
+                {t.vault.deposit.pendingBody}
               </p>
               {depositTxHash && (
                 <a
@@ -1080,7 +1136,7 @@ export function VaultView() {
                   className="button secondary"
                   style={{ marginTop: "0.75rem", fontSize: "0.78rem" }}
                 >
-                  <ExternalLink size={12} /> View Transaction
+                  <ExternalLink size={12} /> {t.vault.deposit.viewTransaction}
                 </a>
               )}
             </div>
@@ -1090,14 +1146,16 @@ export function VaultView() {
 
       {/* Deposit Success Modal */}
       {dialog === "deposit_success" && (
-        <Dialog title="Deposit Confirmed" onClose={() => setDialog("")}>
+        <Dialog title={t.vault.deposit.successTitle} onClose={() => setDialog("")}>
           <div className="dialog-body">
             <div className="deposit-success-state">
               <div className="success-badge" style={{ margin: "0 auto 1rem" }}>
                 <Check size={22} />
               </div>
               <p className="text-sm" style={{ color: "var(--ink)", textAlign: "center", marginBottom: "0.75rem" }}>
-                Your deposit of <strong>{depositAsset}</strong> was confirmed on Robinhood Chain. Your vault balances are being refreshed.
+                {t.vault.deposit.successBodyPrefix}{" "}
+                <strong>{depositAsset}</strong>{" "}
+                {t.vault.deposit.successBodySuffix}
               </p>
               {depositTxHash && (
                 <a
@@ -1107,13 +1165,13 @@ export function VaultView() {
                   className="button secondary"
                   style={{ fontSize: "0.78rem" }}
                 >
-                  <ExternalLink size={12} /> View on Explorer
+                  <ExternalLink size={12} /> {t.vault.deposit.viewOnExplorer}
                 </a>
               )}
             </div>
             <div className="dialog-actions">
               <button className="button primary" onClick={() => { setDialog(""); setDepositTxHash(undefined); }}>
-                Done
+                {t.vault.notices.done}
               </button>
             </div>
           </div>
