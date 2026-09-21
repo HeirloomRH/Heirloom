@@ -20,11 +20,9 @@
 > [!IMPORTANT]
 > **Status: custodial beta.** Trust vaults are currently operated by Heirloom's
 > backend — vault addresses are derived from a service-held master key, and
-> distributions are executed by an operator wallet. The on-chain vault contracts
-> described below are specified and in development, not yet deployed. Until they
-> ship and existing trusts migrate, a trust does **not** execute independently of
-> Heirloom: the custody and on-chain-execution properties in this README describe
-> the target architecture, not what runs today.
+> distributions are executed by an operator wallet. A trust does **not** execute
+> independently of Heirloom today: the custody and on-chain-execution properties
+> described in this README are the target architecture, not what runs now.
 
 The wealthy don't hand their kids cash — they set up trusts: portfolios that vest on schedules, pay allowances, and survive the person who created them. That machinery traditionally costs lawyers, banks, and five figures a year. **HEIRLOOM** turns this into a five-minute on-chain flow: build a portfolio of real tokenized stocks, seal it in a dedicated trust vault, and program exactly how and when it reaches the people you love — vesting birthdays, monthly allowances, education unlocks, and an automated dead-man's switch.
 
@@ -34,7 +32,7 @@ The wealthy don't hand their kids cash — they set up trusts: portfolios that v
 
 | Feature | Description | Target On-Chain Execution |
 | :--- | :--- | :--- |
-| **Trust Vaults** | Isolated vaults for tokenized stocks & ETFs with USDG or native asset funding. | Vault contracts (in development) |
+| **Trust Vaults** | Isolated vaults for tokenized stocks & ETFs with USDG or native asset funding. | Vault contracts |
 | **Vesting Cliffs** | Multi-stage age/milestone unlocks (e.g. 25% at 18, 25% at 21, remainder at 25). | Immutable schedule executor |
 | **Dead-Man's Switch** | Configurable heartbeat check-ins; succession plan triggers automatically upon missed window. | Heartbeat timestamp checks |
 | **Bounded Guardians** | Optional guardian wallets (family or k-of-n multi-sig) to pause or verify unlocks. | Strictly bounded; cannot redirect corpus |
