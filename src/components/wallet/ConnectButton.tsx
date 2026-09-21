@@ -1,5 +1,6 @@
 import { ConnectButton as RainbowConnectButton } from "@rainbow-me/rainbowkit";
 import { Wallet, ChevronDown, AlertTriangle } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 interface ConnectButtonProps {
   className?: string;
@@ -10,6 +11,7 @@ export function ConnectButton({
   className = "",
   showBalance = false,
 }: ConnectButtonProps) {
+  const t = useT();
   return (
     <RainbowConnectButton.Custom>
       {({
@@ -51,7 +53,7 @@ export function ConnectButton({
                   >
                     <Wallet size={13} className="text-[#94b8cf] transition group-hover:text-[#f1ede5]" />
                     <span className="tracking-wide !text-[#f1ede5]" style={{ color: "#f1ede5" }}>
-                      Connect Wallet
+                      {t.wallet.connect}
                     </span>
                   </button>
                 );
@@ -65,7 +67,7 @@ export function ConnectButton({
                     className={`inline-flex items-center gap-1.5 rounded-full border border-rose-600/60 bg-rose-950/80 px-3 py-1.5 text-xs font-medium text-rose-200 shadow-sm transition hover:bg-rose-900 active:scale-[0.98] ${className}`}
                   >
                     <AlertTriangle size={13} className="text-rose-400" />
-                    <span>Switch to Robinhood Chain</span>
+                    <span>{t.wallet.switchChain}</span>
                   </button>
                 );
               }
@@ -76,12 +78,12 @@ export function ConnectButton({
                   <button
                     onClick={openChainModal}
                     type="button"
-                    title={`Connected to ${chain.name}`}
+                    title={t.wallet.connectedTo(chain.name ?? "")}
                     className="inline-flex items-center gap-1.5 rounded-full border border-[#d8dee0] bg-[#eae5dc] px-2.5 py-1 text-xs font-medium text-[#152c41] transition hover:bg-[#ded6c9] active:scale-[0.98]"
                   >
                     {chain.hasIcon && chain.iconUrl ? (
                       <img
-                        alt={chain.name ?? "Chain icon"}
+                        alt={chain.name ?? t.wallet.chainIconAlt}
                         src={chain.iconUrl}
                         className="h-3.5 w-3.5 rounded-full"
                       />
