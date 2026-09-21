@@ -105,30 +105,35 @@ export interface InferenceReleaseSchedule {
   vault_index: number;
 }
 
-export type InferenceReleaseOutcome =
+export type CreditGrantOutcome =
   | { status: "confirmed"; txHash: Hash; usdgSpent: bigint }
   | { status: "deferred_thin_book"; detail: string }
   | { status: "deferred_insufficient_funds"; detail: string }
   | { status: "failed"; detail: string };
 
-/**
- * Execute one due release: buy CREDIT with USDG straight out of the trust's
- * own vault wallet and activate it directly to the beneficiary's key. No
- * relayer hop — the vault wallet (same one executeVaultPayout uses for
- * ordinary claims) signs its own approve + buyAndActivate.
- */
-export async function executeInferenceRelease(
-  schedule: InferenceReleaseSchedule,
-): Promise<InferenceReleaseOutcome> {
-  const usdgPerCycle = BigInt(schedule.usdg_per_cycle_atomic);
-  const remaining = BigInt(schedule.total_remaining_atomic);
-  const usdgIn = usdgPerCycle < remaining ? usdgPerCycle : remaining;
+/** @deprecated use CreditGrantOutcome — kept as an alias so existing imports don't break. */
+export type InferenceReleaseOutcome = CreditGrantOutcome;
 
+/**
+ * Buy CREDIT with USDG straight out of a trust's own vault wallet and
+ * activate it directly to a beneficiary/successor's key. No relayer hop —
+ * the vault wallet (same one executeVaultPayout uses for ordinary claims)
+ * signs its own approve + buyAndActivate. Shared by both the recurring
+ * InferenceLeg release and the one-time succession AI grant — same
+ * quote-band and balance guards either way.
+ */
+export async function executeCreditGrant(params: {
+  vaultIndex: number;
+  trustId: string;
+  recipientAddress: Address;
+  usdgIn: bigint;
+}): Promise<CreditGrantOutcome> {
+  const { vaultIndex, trustId, recipientAddress, usdgIn } = params;
   if (usdgIn <= 0n) {
-    return { status: "failed", detail: "Nothing remaining to release" };
+    return { status: "failed", detail: "Nothing to grant" };
   }
 
-  const account = getVaultAccount(schedule.vault_index);
+  const account = getVaultAccount(vaultIndex);
 
   const vaultUsdgBalance = await publicClient.readContract({
     address: USDG_ADDRESS,
@@ -139,7 +144,7 @@ export async function executeInferenceRelease(
   if (vaultUsdgBalance < usdgIn) {
     return {
       status: "deferred_insufficient_funds",
-      detail: `Vault holds ${vaultUsdgBalance} USDG, needs ${usdgIn} for this cycle`,
+      detail: `Vault holds ${vaultUsdgBalance} USDG, needs ${usdgIn}`,
     };
   }
 
@@ -158,10 +163,7 @@ export async function executeInferenceRelease(
     };
   }
 
-  const beneficiaryKey = await resolveBeneficiaryKey(
-    schedule.trust_id,
-    getAddress(schedule.beneficiary_address),
-  );
+  const beneficiaryKey = await resolveBeneficiaryKey(trustId, getAddress(recipientAddress));
 
   const walletClient = createWalletClient({
     account,
@@ -202,4 +204,35 @@ export async function executeInferenceRelease(
     const detail = error instanceof Error ? error.message : String(error);
     return { status: "failed", detail };
   }
+}
+
+/** Execute one due recurring InferenceLeg release. */
+export async function executeInferenceRelease(
+  schedule: InferenceReleaseSchedule,
+): Promise<CreditGrantOutcome> {
+  const usdgPerCycle = BigInt(schedule.usdg_per_cycle_atomic);
+  const remaining = BigInt(schedule.total_remaining_atomic);
+  const usdgIn = usdgPerCycle < remaining ? usdgPerCycle : remaining;
+
+  return executeCreditGrant({
+    vaultIndex: schedule.vault_index,
+    trustId: schedule.trust_id,
+    recipientAddress: getAddress(schedule.beneficiary_address),
+    usdgIn,
+  });
+}
+
+/** Execute a one-time succession AI grant to the successor's key. */
+export async function executeSuccessionGrant(params: {
+  vaultIndex: number;
+  trustId: string;
+  successorAddress: Address;
+  usdgIn: bigint;
+}): Promise<CreditGrantOutcome> {
+  return executeCreditGrant({
+    vaultIndex: params.vaultIndex,
+    trustId: params.trustId,
+    recipientAddress: params.successorAddress,
+    usdgIn: params.usdgIn,
+  });
 }

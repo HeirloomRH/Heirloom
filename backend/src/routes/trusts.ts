@@ -1109,6 +1109,96 @@ trustsRouter.post("/:id/unstake", async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/trusts/:id/succession-ai-budget
+ * Grantor configures a one-time USDG amount that gets converted to activated
+ * CREDIT for the successor the moment succession triggers — for settling
+ * affairs, running the estate's agent. Executed automatically by
+ * heartbeatWorker.ts; nothing for the successor to claim.
+ */
+trustsRouter.post("/:id/succession-ai-budget", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { grantorAddress, budgetUsdg } = req.body;
+
+    if (!grantorAddress || budgetUsdg === undefined || budgetUsdg === null) {
+      res.status(400).json({ error: "grantorAddress and budgetUsdg are required" });
+      return;
+    }
+
+    const trustRes = await query("SELECT * FROM trusts WHERE id = $1", [id]);
+    if (trustRes.rows.length === 0) {
+      res.status(404).json({ error: "Trust not found" });
+      return;
+    }
+    const trust = trustRes.rows[0];
+
+    if (trust.grantor_address.toLowerCase() !== grantorAddress.toLowerCase()) {
+      res
+        .status(403)
+        .json({ error: "Only the designated grantor can configure the succession AI budget" });
+      return;
+    }
+    if (trust.succession_ai_granted_at) {
+      res.status(400).json({ error: "This trust's succession AI budget has already been granted" });
+      return;
+    }
+
+    const amount = parseUnits(String(budgetUsdg), 6);
+    if (amount < 0n) {
+      res.status(400).json({ error: "budgetUsdg cannot be negative" });
+      return;
+    }
+
+    await query(
+      `UPDATE trusts SET succession_ai_budget_usdg_atomic = $1, updated_at = NOW() WHERE id = $2`,
+      [amount > 0n ? amount.toString() : null, id],
+    );
+
+    res.json({
+      success: true,
+      message:
+        amount > 0n
+          ? `Succession AI budget set: ${budgetUsdg} USDG, activated to the successor when succession triggers.`
+          : "Succession AI budget cleared.",
+    });
+  } catch (err) {
+    console.error("Error configuring succession AI budget:", err);
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: "Failed to configure succession AI budget", details: message });
+  }
+});
+
+/**
+ * GET /api/trusts/:id/succession-ai-budget
+ */
+trustsRouter.get("/:id/succession-ai-budget", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const trustRes = await query(
+      "SELECT succession_ai_budget_usdg_atomic, succession_ai_granted_at FROM trusts WHERE id = $1",
+      [id],
+    );
+    if (trustRes.rows.length === 0) {
+      res.status(404).json({ error: "Trust not found" });
+      return;
+    }
+    const grants = await query(
+      "SELECT * FROM succession_ai_grants WHERE trust_id = $1 ORDER BY created_at DESC",
+      [id],
+    );
+    res.json({
+      budgetUsdgAtomic: trustRes.rows[0].succession_ai_budget_usdg_atomic,
+      grantedAt: trustRes.rows[0].succession_ai_granted_at,
+      grants: grants.rows,
+    });
+  } catch (err) {
+    console.error("Error fetching succession AI budget:", err);
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: "Failed to fetch succession AI budget", details: message });
+  }
+});
+
+/**
  * POST /api/trusts/:id/telegram-link
  * Generates a one-time pairing token and Telegram bot deep-link for this trust
  */
