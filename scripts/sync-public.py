@@ -124,8 +124,7 @@ def main():
             if (
                 path == b".lovable"
                 or path.startswith(b".lovable/")
-                or path == b"technical-docs/DUAL_REPO_SYNC.md"
-                or path.startswith(b"technical-docs/TECH_UPDATES")
+                or path.startswith(b"technical-docs/")
             ):
                 if len(parts) > 2 and parts[2] == b"inline":
                     data_line = inp.readline()
