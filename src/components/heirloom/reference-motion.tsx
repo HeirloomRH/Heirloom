@@ -1,5 +1,6 @@
 
 import { useRef, type ReactNode, type CSSProperties } from "react";
+import { useT, useLocale } from "@/lib/i18n";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
@@ -183,22 +184,29 @@ export function ReferenceMotion({ children }: { children: ReactNode }) {
   );
 }
 
-const cards: [string, number, number, number, number][] = [
-  ["Emma’s tomorrow", -442, -238, 317, 0.8],
-  ["The family portfolio", 219, -257, 317, 0.8],
-  ["A first home", 511, -57, 226, 0.5],
-  ["A little head start", -546, 128, 317, 0.8],
-  ["Leo’s next chapter", 229, 155, 218, 0.5],
-  ["Room to dream", 715, 165, 409, 0.5],
-  ["Your long-term wishes", -98, 267, 317, 0.8],
-  ["An education", -800, -137, 200, 0.5],
-  ["A trusted guardian", -260, -395, 265, 0.35],
-  ["A letter for tomorrow", 580, -360, 260, 0.35],
-  ["Maya’s first step", -740, 370, 340, 0.3],
-  ["A lasting intention", 340, 405, 290, 0.3],
+// Card geometry: [x, y, width, opacity]. Labels come from the dictionary and
+// are matched to this list by index.
+const cardLayout: [number, number, number, number][] = [
+  [-442, -238, 317, 0.8],
+  [219, -257, 317, 0.8],
+  [511, -57, 226, 0.5],
+  [-546, 128, 317, 0.8],
+  [229, 155, 218, 0.5],
+  [715, 165, 409, 0.5],
+  [-98, 267, 317, 0.8],
+  [-800, -137, 200, 0.5],
+  [-260, -395, 265, 0.35],
+  [580, -360, 260, 0.35],
+  [-740, 370, 340, 0.3],
+  [340, 405, 290, 0.3],
 ];
 
 export function ReferenceNetwork() {
+  const t = useT();
+  const cards = cardLayout.map(
+    ([x, y, width, opacity], i) =>
+      [t.home.networkCards[i], x, y, width, opacity] as const,
+  );
   return (
     <section className="legacy-scroll">
       <div className="legacy-stage">
@@ -245,19 +253,23 @@ export function ReferenceNetwork() {
 }
 
 export function HeroHeading() {
+  const t = useT();
+  const { locale } = useLocale();
+  // The stagger animates one unit at a time. English splits on spaces;
+  // Chinese has none, so it splits per character instead.
+  const split = (line: string) =>
+    locale === "zh" ? Array.from(line) : line.split(" ");
   return (
-    <h1 aria-label="Give your family the freedom to build a better tomorrow.">
-      {["Give your family the", "freedom to build a", "better tomorrow."].map(
-        (line, i) => (
-          <span className="hero-line" key={i}>
-            {line.split(" ").map((word, j) => (
-              <span className="hero-word" key={j} aria-hidden="true">
-                <span>{word}</span>
-              </span>
-            ))}
-          </span>
-        ),
-      )}
+    <h1 aria-label={t.home.hero.ariaLabel}>
+      {t.home.hero.lines.map((line, i) => (
+        <span className="hero-line" key={i}>
+          {split(line).map((unit, j) => (
+            <span className="hero-word" key={j} aria-hidden="true">
+              <span>{unit}</span>
+            </span>
+          ))}
+        </span>
+      ))}
     </h1>
   );
 }
