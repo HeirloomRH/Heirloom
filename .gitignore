@@ -53,3 +53,7 @@ contracts/broadcast/
 *.sln
 *.sw?
 *.pem
+
+docs
+
+me.txt

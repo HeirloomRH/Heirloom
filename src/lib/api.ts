@@ -80,6 +80,10 @@ export interface TrustDetail {
   hasEncryptedLetter: boolean;
   telegramLinked?: boolean;
   telegramAlertsEnabled?: boolean;
+  mode?: "public" | "private";
+  termsHash?: string;
+  cipherTerms?: string;
+  cipherLetter?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -103,6 +107,10 @@ export interface CreateTrustPayload {
   guardians?: Array<{ address: string; role?: string }>;
   assets: Array<{ symbol: string; address?: string; targetAllocationBps: number; dripEnabled?: boolean }>;
   vestingSchedules: Array<{ unlockTimestamp: string; percentageBps: number }>;
+  mode?: "public" | "private";
+  termsHash?: string;
+  cipherTerms?: string;
+  cipherLetter?: string;
 }
 
 export interface CreateTrustResult {
