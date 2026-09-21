@@ -136,6 +136,49 @@ export const vault: typeof EnVault = {
     successBodyPrefix: "你存入的",
     successBodySuffix: "已在 Robinhood Chain 上确认。金库余额正在刷新。",
     viewOnExplorer: "在区块浏览器中查看",
+
+    modeLabel: "您希望如何注资？",
+    modeDirect: "转入单一资产",
+    modeDirectHint: "将单一代币直接转账至金库。",
+    modeBasket: "使用 ETH 存入（自动拆分篮子）",
+    modeBasketHint:
+      "一次性支付 ETH。路由器将买入整个资产篮子，并在同一笔交易中交付至金库。",
+
+    basketIntro:
+      "您的 ETH 将按本信托的目标配置比例拆分，并在同一笔交易中完成兑换。代币会直接交付至金库地址，不会经过您的钱包。",
+    basketAmountLabel: "存入的 ETH",
+    basketAmountPlaceholder: "例如 0.5",
+    basketBalance: "您的余额：",
+    basketPreviewTitle: "您将收到",
+    colTarget: "目标比例",
+    colSpend: "投入 ETH",
+    colReceive: "预计收到",
+    estimateUnavailable: "无报价",
+    passthroughNote: "原样持有",
+    fallbackNote: (symbol: string) => `改为兑换成 ${symbol}`,
+    basketRouted: "已兑换",
+    basketPassthrough: "已转账",
+    basketTotal: "合计",
+
+    slippageLabel: "滑点容忍度",
+    slippageHint:
+      "若某一腿无法在该容忍度内成交，将转为兑换 USDG，而不会导致整笔存入回滚。",
+    slippageCustom: "自定义",
+
+    routerCheckingTitle: "正在检查兑换流动性……",
+    routerUnavailableTitle: "该网络暂不支持自动拆分",
+    routerUnavailableRouter:
+      "Robinhood Chain 上所配置的地址未部署 Uniswap 路由器，因此无处路由此次兑换。",
+    routerUnavailableQuoter:
+      "兑换路由器已在 Robinhood Chain 上运行，但其报价合约无法访问，因此无法保证您将收到的数量。请改为转入单一资产，而不要在无报价的情况下兑换。",
+    routerUnavailableProbe:
+      "无法连接 Robinhood Chain 以确认兑换流动性。请改为转入单一资产，或稍后重试。",
+    routerUnavailableAction: "改为转入单一资产",
+    quotesUnavailable:
+      "实时报价不可用，因此无法显示您将收到的数量。下方的 ETH 拆分比例是精确的。",
+
+    basketSend: "兑换并存入",
+    basketReview: "查看拆分明细",
   },
 
   notices: {
@@ -158,6 +201,21 @@ export const vault: typeof EnVault = {
     unlockFailed: "解锁加密信件失败。",
     connectBeneficiary: "请连接受益人钱包后再领取。",
     claimFailed: "执行领取发放失败。",
+
+    // 篮子规划错误码，来自 src/lib/heirloom/basket.mjs。
+    basket_empty: "本信托没有可供拆分的目标配置。",
+    basket_allocation_positive: "每项配置比例都必须大于 0%，才能路由篮子存入。",
+    basket_allocation_total: "目标配置比例之和必须为 100%。",
+    basket_duplicate_symbol:
+      "本信托中同一资产出现了两次；篮子存入要求每项资产仅一行。",
+    basket_amount_positive: "请输入大于 0 的 ETH 数量。",
+    slippage_invalid: "滑点容忍度必须为整数基点。",
+    slippage_too_low: "滑点容忍度不得低于 0.01%。",
+    slippage_too_high: "滑点容忍度不得超过 50%。",
+    routerUnavailable: "该网络不支持兑换路由，因此无法执行篮子存入。",
+    quotesRequired: "签署篮子存入前必须获取实时报价。",
+    insufficientEth: (balance: string) =>
+      `ETH 不足。您已连接的钱包在 Robinhood Chain 上持有 ${balance} ETH。`,
   },
 
   success: {

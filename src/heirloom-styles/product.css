@@ -2166,6 +2166,235 @@
   line-height: 1.5;
 }
 
+/* ── Atomic basket deposit ─────────────────────────────── */
+.deposit-mode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.deposit-mode > button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 11px 12px;
+  text-align: left;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--ink);
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.deposit-mode > button:hover {
+  border-color: var(--ink);
+}
+
+.deposit-mode > button.is-active {
+  background: #fff;
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+
+.deposit-mode > button > span {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.deposit-mode > button > small {
+  font-size: 10px;
+  line-height: 1.45;
+  opacity: 0.65;
+}
+
+.deposit-field-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.deposit-balance {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink);
+  opacity: 0.8;
+}
+
+.deposit-max {
+  margin-left: 8px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--ink);
+  text-decoration: underline;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.deposit-hint {
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--ink);
+  opacity: 0.6;
+}
+
+.deposit-error {
+  font-size: 11px;
+  line-height: 1.5;
+  color: #b91c1c;
+  margin-bottom: 12px;
+}
+
+.deposit-router-warning {
+  display: flex;
+  gap: 10px;
+  padding: 11px 12px;
+  margin-bottom: 14px;
+  background: #fff8ec;
+  border: 1px solid #e5c07b;
+  border-radius: 4px;
+  color: #7a4e00;
+}
+
+.deposit-router-warning > svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.deposit-router-warning strong {
+  display: block;
+  font-size: 11px;
+  margin-bottom: 3px;
+}
+
+.deposit-router-warning p {
+  font-size: 11px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.deposit-router-switch {
+  margin-top: 7px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: #7a4e00;
+  text-decoration: underline;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.slippage-options {
+  display: flex;
+  gap: 6px;
+}
+
+.slippage-options > button {
+  padding: 6px 13px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--ink);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 11px;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.slippage-options > button:hover {
+  border-color: var(--ink);
+}
+
+.slippage-options > button.is-active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+
+.basket-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 14px;
+}
+
+.basket-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.basket-table th {
+  padding: 6px 8px;
+  text-align: left;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.5;
+  border-bottom: 1px solid var(--line);
+}
+
+.basket-table td {
+  padding: 8px;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--mono);
+  vertical-align: middle;
+}
+
+.basket-table tbody td:first-child {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--sans, inherit);
+  font-weight: 600;
+}
+
+.basket-table td em {
+  font-style: normal;
+  font-family: var(--sans, inherit);
+  opacity: 0.6;
+}
+
+.basket-table tfoot td {
+  border-bottom: none;
+  font-weight: 700;
+}
+
+.basket-table th:nth-child(2),
+.basket-table th:nth-child(3),
+.basket-table th:nth-child(4),
+.basket-table td:nth-child(2),
+.basket-table td:nth-child(3),
+.basket-table td:nth-child(4) {
+  text-align: right;
+}
+
+@media (max-width: 620px) {
+  .deposit-mode {
+    grid-template-columns: 1fr;
+  }
+
+  .basket-table th:nth-child(2),
+  .basket-table td:nth-child(2) {
+    display: none;
+  }
+}
+
 /* Pending state */
 .deposit-pending-state {
   display: flex;

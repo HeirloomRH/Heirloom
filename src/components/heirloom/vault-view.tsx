@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import { useAccountModal, useConnectModal } from "@rainbow-me/rainbowkit";
@@ -23,9 +23,10 @@ import {
   SendHorizonal,
   LockOpen,
   Calendar,
+  Split,
 } from "lucide-react";
-import { useAccount, useSignTypedData, useWriteContract, useWaitForTransactionReceipt, useReadContract } from "wagmi";
-import { parseUnits, formatUnits, erc20Abi } from "viem";
+import { useAccount, useSignTypedData, useWriteContract, useWaitForTransactionReceipt, useReadContract, useBalance, usePublicClient } from "wagmi";
+import { parseUnits, parseEther, formatUnits, formatEther, erc20Abi } from "viem";
 import {
   fetchTrust,
   submitHeartbeat,
@@ -48,6 +49,14 @@ import {
   type Vault,
 } from "@/lib/heirloom/vault";
 import { useT } from "@/lib/i18n";
+import { planBasketDeposit } from "@/lib/heirloom/basket.mjs";
+import type { BasketPlan, BasketQuote } from "@/lib/heirloom/basket.mjs";
+import {
+  checkRouterAvailability,
+  quoteBasketLegs,
+  buildBasketDepositRequest,
+  type RouterAvailability,
+} from "@/lib/heirloom/swap-router";
 
 
 // Tab identity is a stable key; only the label is translated.
@@ -120,6 +129,121 @@ export function VaultView() {
   const userTokenBalance = userTokenBalanceRaw !== undefined
     ? formatUnits(userTokenBalanceRaw, tokenDecimals)
     : undefined;
+
+  // --- Atomic basket deposit (pay once in ETH, land the whole basket) ---
+  const [depositMode, setDepositMode] = useState<"direct" | "basket">("direct");
+  const [slippageBps, setSlippageBps] = useState(100); // 1.0%, per spec
+  const [routerStatus, setRouterStatus] = useState<RouterAvailability | null>(null);
+  const [basketQuotes, setBasketQuotes] = useState<Record<string, BasketQuote>>({});
+  const [quoting, setQuoting] = useState(false);
+
+  const publicClient = usePublicClient({ chainId: ROBINHOOD_CHAIN_ID });
+
+  const { data: nativeBalance } = useBalance({
+    address,
+    chainId: ROBINHOOD_CHAIN_ID,
+    query: { enabled: !!address },
+  });
+
+  // Leave headroom for gas so "MAX" cannot produce a transaction that could
+  // never be included.
+  const GAS_RESERVE_WEI = parseEther("0.001");
+  const maxBasketEth =
+    nativeBalance && nativeBalance.value > GAS_RESERVE_WEI
+      ? formatEther(nativeBalance.value - GAS_RESERVE_WEI)
+      : "0";
+
+  const decimalsFor = (symbol: string) =>
+    realTrust?.liveBalances.find((b) => b.token.symbol === symbol)?.token.decimals ??
+    (symbol === "USDG" || symbol === "USDC" ? 6 : 18);
+
+  // The trust's target allocations, in the shape the planner expects.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const basketLegs = useMemo(
+    () =>
+      (realTrust?.assets ?? []).map((a) => ({
+        symbol: a.symbol,
+        bps: a.target_allocation_bps,
+        tokenAddress: a.token_address,
+        decimals: decimalsFor(a.symbol),
+      })),
+    [realTrust],
+  );
+
+  const basketPlan = useMemo<BasketPlan | null>(() => {
+    const amount = parseFloat(depositAmount);
+    if (!depositAmount || isNaN(amount) || amount <= 0) return null;
+    let totalWei: bigint;
+    try {
+      totalWei = parseEther(depositAmount.trim());
+    } catch {
+      return null;
+    }
+    return planBasketDeposit({
+      totalWei,
+      legs: basketLegs,
+      quotes: basketQuotes,
+      slippageBps,
+      inputSymbol: "ETH",
+      fallbackSymbol: "USDG",
+    }) as BasketPlan;
+  }, [depositAmount, basketLegs, basketQuotes, slippageBps]);
+
+  // Confirm the venue exists before the UI offers to spend anyone's ETH.
+  useEffect(() => {
+    if (dialog !== "deposit" || depositMode !== "basket" || !publicClient) return;
+    let cancelled = false;
+    setRouterStatus(null);
+    checkRouterAvailability(publicClient).then((status) => {
+      if (!cancelled) setRouterStatus(status);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [dialog, depositMode, publicClient]);
+
+  // Re-quote once the amount settles. Legs are quoted off the planned split, so
+  // the numbers on screen are the ones that get encoded.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (dialog !== "deposit" || depositMode !== "basket") return;
+    if (!publicClient || !routerStatus?.available || !basketPlan || basketPlan.error)
+      return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setQuoting(true);
+      try {
+        const quotes = await quoteBasketLegs(
+          publicClient,
+          basketPlan.legs
+            .filter((leg) => leg.route !== "passthrough" && !!leg.tokenAddress)
+            .map((leg) => ({
+              symbol: leg.symbol,
+              tokenAddress: leg.tokenAddress as `0x${string}`,
+              decimals: leg.decimals,
+              amountIn: leg.amountIn,
+            })),
+        );
+        if (!cancelled) setBasketQuotes(quotes);
+      } catch {
+        if (!cancelled) setBasketQuotes({});
+      } finally {
+        if (!cancelled) setQuoting(false);
+      }
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // Depends on the split, not on the quote map that the split produces.
+  }, [dialog, depositMode, publicClient, routerStatus, depositAmount, slippageBps]);
+
+  // Planner and validator codes share the vault error dictionary.
+  const codeToMessage = (code: string): string => {
+    const messages = t.vault.errors as unknown as Record<string, unknown>;
+    const message = messages[code];
+    return typeof message === "string" ? message : t.vault.errors.txFailed;
+  };
 
   const { writeContractAsync } = useWriteContract();
   const { data: depositReceipt, isLoading: depositWaiting } =
@@ -247,6 +371,63 @@ export function VaultView() {
     } catch (e: any) {
       const msg = e?.shortMessage || e?.message || t.vault.errors.txFailed;
       setError(msg);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Atomic Basket Deposit Handler — native ETH in, whole basket out
+  const handleBasketDeposit = async () => {
+    if (!realTrust || !vault?.vaultAddress) return;
+    if (!address) {
+      setError(t.vault.errors.connectToDeposit);
+      return;
+    }
+    if (!basketPlan) {
+      setError(t.vault.errors.invalidAmount);
+      return;
+    }
+    if (basketPlan.error) {
+      setError(codeToMessage(basketPlan.error));
+      return;
+    }
+    // Never arm a payable transaction against a venue that is not live.
+    if (!routerStatus?.available) {
+      setError(t.vault.errors.routerUnavailable);
+      return;
+    }
+    if (!basketPlan.fullyQuoted) {
+      setError(t.vault.errors.quotesRequired);
+      return;
+    }
+    if (
+      nativeBalance !== undefined &&
+      nativeBalance.value < basketPlan.totalWei + GAS_RESERVE_WEI
+    ) {
+      setError(t.vault.errors.insufficientEth(formatEther(nativeBalance.value)));
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+    try {
+      // No refund recipient: SwapRouter02's refundETH always pays msg.sender,
+      // which is the grantor signing this transaction.
+      const request = buildBasketDepositRequest({
+        plan: basketPlan,
+        recipient: vault.vaultAddress as `0x${string}`,
+      });
+
+      const txHash = await writeContractAsync({
+        ...request,
+        chainId: ROBINHOOD_CHAIN_ID,
+      });
+
+      setDepositTxHash(txHash);
+      setDialog("deposit_pending");
+    } catch (e) {
+      const err = e as { shortMessage?: string; message?: string };
+      setError(err.shortMessage || err.message || t.vault.errors.txFailed);
     } finally {
       setBusy(false);
     }
@@ -1015,6 +1196,37 @@ export function VaultView() {
       {dialog === "deposit" && realTrust && vault?.vaultAddress && (
         <Dialog title={t.vault.deposit.title} onClose={() => setDialog("")}>
           <div className="dialog-body">
+            <div
+              className="deposit-mode"
+              role="radiogroup"
+              aria-label={t.vault.deposit.modeLabel}
+            >
+              <button
+                type="button"
+                role="radio"
+                aria-checked={depositMode === "direct"}
+                className={depositMode === "direct" ? "is-active" : ""}
+                onClick={() => setDepositMode("direct")}
+              >
+                <SendHorizonal size={15} />
+                <span>{t.vault.deposit.modeDirect}</span>
+                <small>{t.vault.deposit.modeDirectHint}</small>
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={depositMode === "basket"}
+                className={depositMode === "basket" ? "is-active" : ""}
+                onClick={() => setDepositMode("basket")}
+              >
+                <Split size={15} />
+                <span>{t.vault.deposit.modeBasket}</span>
+                <small>{t.vault.deposit.modeBasketHint}</small>
+              </button>
+            </div>
+
+            {depositMode === "direct" ? (
+              <>
             <p className="text-sm" style={{ color: "var(--ink)", marginBottom: "1rem" }}>
               {t.vault.deposit.intro}
             </p>
@@ -1086,6 +1298,177 @@ export function VaultView() {
               )}
             </div>
 
+              </>
+            ) : (
+              <>
+                <p className="text-sm" style={{ color: "var(--ink)", marginBottom: "1rem" }}>
+                  {t.vault.deposit.basketIntro}
+                </p>
+
+                {routerStatus && !routerStatus.available && (
+                  <div className="deposit-router-warning" role="status">
+                    <AlertTriangle size={16} />
+                    <div>
+                      <strong>{t.vault.deposit.routerUnavailableTitle}</strong>
+                      <p>
+                        {routerStatus.reason === "router_missing"
+                          ? t.vault.deposit.routerUnavailableRouter
+                          : routerStatus.reason === "quoter_missing"
+                            ? t.vault.deposit.routerUnavailableQuoter
+                            : t.vault.deposit.routerUnavailableProbe}
+                      </p>
+                      <button
+                        type="button"
+                        className="deposit-router-switch"
+                        onClick={() => setDepositMode("direct")}
+                      >
+                        {t.vault.deposit.routerUnavailableAction}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="deposit-field">
+                  <div className="deposit-field-head">
+                    <label className="deposit-label" htmlFor="basket-amount">
+                      {t.vault.deposit.basketAmountLabel}
+                    </label>
+                    {nativeBalance !== undefined && (
+                      <span className="deposit-balance">
+                        {t.vault.deposit.basketBalance}{" "}
+                        <strong>
+                          {Number(formatEther(nativeBalance.value)).toLocaleString(
+                            undefined,
+                            { maximumFractionDigits: 5 },
+                          )}
+                        </strong>{" "}
+                        ETH
+                        {Number(maxBasketEth) > 0 && (
+                          <button
+                            type="button"
+                            className="deposit-max"
+                            onClick={() => setDepositAmount(maxBasketEth)}
+                          >
+                            {t.vault.deposit.max}
+                          </button>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                  <input
+                    id="basket-amount"
+                    className="deposit-input"
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder={t.vault.deposit.basketAmountPlaceholder}
+                    value={depositAmount}
+                    onChange={(e) => setDepositAmount(e.target.value)}
+                  />
+                </div>
+
+                <div className="deposit-field">
+                  <label className="deposit-label">
+                    {t.vault.deposit.slippageLabel}
+                  </label>
+                  <div
+                    className="slippage-options"
+                    role="group"
+                    aria-label={t.vault.deposit.slippageLabel}
+                  >
+                    {[50, 100, 300].map((bps) => (
+                      <button
+                        key={bps}
+                        type="button"
+                        aria-pressed={slippageBps === bps}
+                        className={slippageBps === bps ? "is-active" : ""}
+                        onClick={() => setSlippageBps(bps)}
+                      >
+                        {bps / 100}%
+                      </button>
+                    ))}
+                  </div>
+                  <p className="deposit-hint">{t.vault.deposit.slippageHint}</p>
+                </div>
+
+                {basketPlan && basketPlan.error !== "" && (
+                  <p className="deposit-error">{codeToMessage(basketPlan.error)}</p>
+                )}
+
+                {basketPlan && basketPlan.error === "" && (
+                  <div className="basket-preview">
+                    <span className="deposit-label">
+                      {t.vault.deposit.basketPreviewTitle}
+                    </span>
+                    {!quoting && !basketPlan.fullyQuoted && (
+                      <p className="deposit-hint">
+                        {t.vault.deposit.quotesUnavailable}
+                      </p>
+                    )}
+                    <table className="basket-table">
+                      <thead>
+                        <tr>
+                          <th>{t.vault.portfolio.colAsset}</th>
+                          <th>{t.vault.deposit.colTarget}</th>
+                          <th>{t.vault.deposit.colSpend}</th>
+                          <th>{t.vault.deposit.colReceive}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {basketPlan.legs.map((leg) => (
+                          <tr key={leg.symbol}>
+                            <td>
+                              <AssetIcon symbol={leg.symbol} className="w-5 h-5" />
+                              {leg.symbol}
+                            </td>
+                            <td>{leg.bps / 100}%</td>
+                            <td>
+                              {Number(formatEther(leg.amountIn)).toLocaleString(
+                                undefined,
+                                { maximumFractionDigits: 6 },
+                              )}
+                            </td>
+                            <td>
+                              {leg.route === "passthrough" ? (
+                                <em>{t.vault.deposit.passthroughNote}</em>
+                              ) : leg.route === "fallback" ? (
+                                <em>
+                                  {t.vault.deposit.fallbackNote(
+                                    leg.fallbackSymbol ?? "USDG",
+                                  )}
+                                </em>
+                              ) : leg.quotedOut !== null ? (
+                                Number(
+                                  formatUnits(leg.quotedOut, leg.decimals ?? 18),
+                                ).toLocaleString(undefined, {
+                                  maximumFractionDigits: 4,
+                                })
+                              ) : (
+                                <em>{t.vault.deposit.estimateUnavailable}</em>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr>
+                          <td>{t.vault.deposit.basketTotal}</td>
+                          <td>100%</td>
+                          <td colSpan={2}>
+                            {Number(formatEther(basketPlan.totalWei)).toLocaleString(
+                              undefined,
+                              { maximumFractionDigits: 6 },
+                            )}{" "}
+                            ETH
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
+              </>
+            )}
+
             <div className="deposit-destination">
               <span className="deposit-destination-label">
                 {t.vault.deposit.toVault}
@@ -1101,19 +1484,45 @@ export function VaultView() {
               >
                 {t.vault.deposit.cancel}
               </button>
-              <button
-                className="button primary"
-                onClick={handleDeposit}
-                disabled={busy || !depositAsset || !depositAmount}
-              >
-                {busy ? (
-                  t.vault.deposit.sending
-                ) : (
-                  <>
-                    <SendHorizonal size={14} /> {t.vault.deposit.send}
-                  </>
-                )}
-              </button>
+              {depositMode === "direct" ? (
+                <button
+                  className="button primary"
+                  onClick={handleDeposit}
+                  disabled={busy || !depositAsset || !depositAmount}
+                >
+                  {busy ? (
+                    t.vault.deposit.sending
+                  ) : (
+                    <>
+                      <SendHorizonal size={14} /> {t.vault.deposit.send}
+                    </>
+                  )}
+                </button>
+              ) : (
+                <button
+                  className="button primary"
+                  onClick={handleBasketDeposit}
+                  disabled={
+                    busy ||
+                    quoting ||
+                    !depositAmount ||
+                    !routerStatus?.available ||
+                    !basketPlan ||
+                    basketPlan.error !== "" ||
+                    !basketPlan.fullyQuoted
+                  }
+                >
+                  {busy ? (
+                    t.vault.deposit.sending
+                  ) : quoting ? (
+                    t.vault.deposit.routerCheckingTitle
+                  ) : (
+                    <>
+                      <Split size={14} /> {t.vault.deposit.basketSend}
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </Dialog>

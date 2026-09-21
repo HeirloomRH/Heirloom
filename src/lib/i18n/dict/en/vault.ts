@@ -139,6 +139,49 @@ export const vault = {
     successBodySuffix:
       "was confirmed on Robinhood Chain. Your vault balances are being refreshed.",
     viewOnExplorer: "View on Explorer",
+
+    modeLabel: "How would you like to fund this?",
+    modeDirect: "Send one asset",
+    modeDirectHint: "Transfer a single token straight to the vault.",
+    modeBasket: "Deposit with ETH (Auto-Split Basket)",
+    modeBasketHint:
+      "Pay once in ETH. The router buys the whole basket and delivers it to the vault in a single transaction.",
+
+    basketIntro:
+      "Your ETH is split across this trust's target allocations and swapped in one transaction. The tokens are delivered straight to the vault address, never to your wallet.",
+    basketAmountLabel: "ETH to deposit",
+    basketAmountPlaceholder: "e.g. 0.5",
+    basketBalance: "Your balance:",
+    basketPreviewTitle: "You will receive",
+    colTarget: "Target",
+    colSpend: "ETH in",
+    colReceive: "Est. received",
+    estimateUnavailable: "No quote",
+    passthroughNote: "Held as-is",
+    fallbackNote: (symbol: string) => `Routed to ${symbol}`,
+    basketRouted: "Swapped",
+    basketPassthrough: "Transferred",
+    basketTotal: "Total",
+
+    slippageLabel: "Slippage tolerance",
+    slippageHint:
+      "If a leg cannot fill within this tolerance it converts to USDG instead of reverting your whole deposit.",
+    slippageCustom: "Custom",
+
+    routerCheckingTitle: "Checking swap liquidity…",
+    routerUnavailableTitle: "Auto-split is not available on this network yet",
+    routerUnavailableRouter:
+      "No Uniswap router is deployed on Robinhood Chain at the configured address, so there is nowhere to route the swap.",
+    routerUnavailableQuoter:
+      "The swap router is live on Robinhood Chain, but its quoter is unreachable, so the amounts you would receive cannot be guaranteed. Send a single asset instead rather than swapping blind.",
+    routerUnavailableProbe:
+      "Could not reach Robinhood Chain to confirm swap liquidity. Send a single asset instead, or try again in a moment.",
+    routerUnavailableAction: "Send one asset instead",
+    quotesUnavailable:
+      "Live quotes are unavailable, so the amounts you would receive cannot be shown. The ETH split below is exact.",
+
+    basketSend: "Swap & Deposit",
+    basketReview: "Review split",
   },
 
   notices: {
@@ -162,6 +205,24 @@ export const vault = {
     unlockFailed: "Failed to unlock encrypted letter.",
     connectBeneficiary: "Please connect beneficiary wallet to claim.",
     claimFailed: "Failed to execute claim payout.",
+
+    // Basket planning codes from src/lib/heirloom/basket.mjs.
+    basket_empty: "This trust has no target allocations to split into.",
+    basket_allocation_positive:
+      "Every allocation must be greater than 0% before a basket deposit can be routed.",
+    basket_allocation_total: "Target allocations must add up to 100%.",
+    basket_duplicate_symbol:
+      "This trust lists the same asset twice; a basket deposit needs one row per asset.",
+    basket_amount_positive: "Enter an ETH amount greater than 0.",
+    slippage_invalid: "Slippage tolerance must be a whole number of basis points.",
+    slippage_too_low: "Slippage tolerance must be at least 0.01%.",
+    slippage_too_high: "Slippage tolerance cannot exceed 50%.",
+    routerUnavailable:
+      "Swap routing is unavailable on this network, so the basket cannot be executed.",
+    quotesRequired:
+      "Live quotes are required before a basket deposit can be signed.",
+    insufficientEth: (balance: string) =>
+      `Insufficient ETH. Your connected wallet holds ${balance} ETH on Robinhood Chain.`,
   },
 
   success: {
