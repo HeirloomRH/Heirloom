@@ -56,6 +56,12 @@ export const config = {
   // hardcoded in index.ts, this one isn't.
   inferenceReleaseIntervalMs: parseInt(process.env.INFERENCE_RELEASE_INTERVAL_MS || "60000", 10),
 
+  // How often the stake-claim worker sweeps settled CREDIT from Orbio Staking
+  // into each staked trust's vault. Orbio itself settles hourly on its own
+  // keeper schedule — this just needs to poll more often than that to not
+  // lag noticeably behind it.
+  stakeClaimIntervalMs: parseInt(process.env.STAKE_CLAIM_INTERVAL_MS || "300000", 10),
+
   // Telegram Bot
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || "",
   telegramBotUsername: (process.env.TELEGRAM_BOT_USERNAME || "@HeirloomRHBot").replace(/^@/, ""),

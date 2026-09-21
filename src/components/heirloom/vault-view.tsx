@@ -42,11 +42,15 @@ import {
   unlinkTelegram,
   configureInferenceAllowance,
   fetchInferenceAllowances,
+  stakeOrbio,
+  unstakeOrbio,
+  fetchStakeStatus,
   type TrustResponse,
   type RelayerInfoResponse,
   type TelegramPairingResponse,
   type InferenceSchedule,
   type InferenceRelease,
+  type StakeStatus,
 } from "@/lib/api";
 import { ROBINHOOD_CHAIN_ID, ROBINHOOD_EXPLORER_URL } from "@/lib/chain";
 import { DemoNotice, Dialog } from "./product";
@@ -177,6 +181,16 @@ export function VaultView() {
   const [inferenceSubmitting, setInferenceSubmitting] = useState(false);
   const [inferenceError, setInferenceError] = useState("");
   const [inferenceNotice, setInferenceNotice] = useState("");
+
+  // --- ORBIO Staking ---
+  const [stakeAmount, setStakeAmount] = useState("");
+  const [unstakeAmount, setUnstakeAmount] = useState("");
+  const [stakeStatus, setStakeStatus] = useState<StakeStatus | null>(null);
+  const [stakeLoading, setStakeLoading] = useState(false);
+  const [staking, setStaking] = useState(false);
+  const [unstaking, setUnstaking] = useState(false);
+  const [stakeError, setStakeError] = useState("");
+  const [stakeNotice, setStakeNotice] = useState("");
 
   // --- Telegram Bot Integration ---
   const [telegramPairing, setTelegramPairing] = useState<TelegramPairingResponse | null>(null);
@@ -384,6 +398,23 @@ export function VaultView() {
     };
   }, [tab, realTrust?.trust.id]);
 
+  // Load ORBIO stake status (live on-chain position + history) alongside it.
+  useEffect(() => {
+    if (tab !== "inference" || !realTrust?.trust.id) return;
+    let cancelled = false;
+    setStakeLoading(true);
+    fetchStakeStatus(realTrust.trust.id)
+      .then((status) => {
+        if (!cancelled) setStakeStatus(status);
+      })
+      .finally(() => {
+        if (!cancelled) setStakeLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, realTrust?.trust.id]);
+
   const handleConfigureInference = async () => {
     if (!realTrust?.trust.id || !address) {
       setInferenceError(t.vault.errors.connectToDeposit);
@@ -424,6 +455,64 @@ export function VaultView() {
       setInferenceError(e?.message || t.vault.errors.txFailed);
     } finally {
       setInferenceSubmitting(false);
+    }
+  };
+
+  const handleStake = async () => {
+    if (!realTrust?.trust.id || !address) {
+      setStakeError(t.vault.errors.connectToDeposit);
+      return;
+    }
+    if (!stakeAmount) {
+      setStakeError(t.vault.errors.invalidAmount);
+      return;
+    }
+
+    setStaking(true);
+    setStakeError("");
+    setStakeNotice("");
+    try {
+      const result = await stakeOrbio(realTrust.trust.id, {
+        grantorAddress: address,
+        amountOrbio: stakeAmount,
+      });
+      setStakeNotice(result.message);
+      setStakeAmount("");
+      const status = await fetchStakeStatus(realTrust.trust.id);
+      setStakeStatus(status);
+    } catch (e: any) {
+      setStakeError(e?.message || t.vault.errors.txFailed);
+    } finally {
+      setStaking(false);
+    }
+  };
+
+  const handleUnstake = async () => {
+    if (!realTrust?.trust.id || !address) {
+      setStakeError(t.vault.errors.connectToDeposit);
+      return;
+    }
+    if (!unstakeAmount) {
+      setStakeError(t.vault.errors.invalidAmount);
+      return;
+    }
+
+    setUnstaking(true);
+    setStakeError("");
+    setStakeNotice("");
+    try {
+      const result = await unstakeOrbio(realTrust.trust.id, {
+        grantorAddress: address,
+        amountOrbio: unstakeAmount,
+      });
+      setStakeNotice(result.message);
+      setUnstakeAmount("");
+      const status = await fetchStakeStatus(realTrust.trust.id);
+      setStakeStatus(status);
+    } catch (e: any) {
+      setStakeError(e?.message || t.vault.errors.txFailed);
+    } finally {
+      setUnstaking(false);
     }
   };
 
@@ -1495,6 +1584,117 @@ export function VaultView() {
                 <p className="field-hint" style={{ marginTop: "-6px", marginBottom: "16px" }}>
                   {t.vault.inference.hint}
                 </p>
+
+                {isGrantor && !isSuccessionTriggered && (
+                  <div className="deposit-field" style={{ marginBottom: "24px" }}>
+                    <h3 style={{ marginBottom: "6px" }}>{t.vault.inference.stakeTitle}</h3>
+                    <p className="field-hint" style={{ marginBottom: "10px" }}>
+                      {t.vault.inference.stakeHint}
+                    </p>
+
+                    {stakeStatus && (
+                      <p className="field-hint" style={{ marginBottom: "10px" }}>
+                        {t.vault.inference.stakedLabel}:{" "}
+                        <b>{formatUnits(BigInt(stakeStatus.stakedAtomic), 18)} ORBIO</b>
+                        {" · "}
+                        {t.vault.inference.minPositionNote(
+                          formatUnits(BigInt(stakeStatus.minPositionAtomic), 18),
+                        )}
+                      </p>
+                    )}
+
+                    <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
+                      <div style={{ flex: 1 }}>
+                        <label className="deposit-label">
+                          {t.vault.inference.stakeAmountLabel}
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          placeholder={t.vault.inference.stakeAmountPlaceholder}
+                          value={stakeAmount}
+                          onChange={(e) => setStakeAmount(e.target.value)}
+                        />
+                        <button
+                          className="button primary"
+                          style={{ marginTop: "8px", width: "100%" }}
+                          onClick={handleStake}
+                          disabled={staking}
+                        >
+                          {staking ? t.vault.inference.staking : t.vault.inference.stakeSubmit}
+                        </button>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label className="deposit-label">
+                          {t.vault.inference.unstakeAmountLabel}
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          placeholder={t.vault.inference.stakeAmountPlaceholder}
+                          value={unstakeAmount}
+                          onChange={(e) => setUnstakeAmount(e.target.value)}
+                        />
+                        <button
+                          className="button"
+                          style={{ marginTop: "8px", width: "100%" }}
+                          onClick={handleUnstake}
+                          disabled={unstaking}
+                        >
+                          {unstaking
+                            ? t.vault.inference.unstaking
+                            : t.vault.inference.unstakeSubmit}
+                        </button>
+                      </div>
+                    </div>
+
+                    {stakeError && (
+                      <p className="field-hint" style={{ color: "var(--error, #c0524a)" }}>
+                        {stakeError}
+                      </p>
+                    )}
+                    {stakeNotice && (
+                      <p className="field-hint" style={{ color: "var(--success, #4a8f5c)" }}>
+                        {stakeNotice}
+                      </p>
+                    )}
+
+                    {!stakeLoading && stakeStatus && stakeStatus.events.length > 0 && (
+                      <table className="holdings-table" style={{ marginTop: "10px" }}>
+                        <tbody>
+                          {stakeStatus.events.slice(0, 5).map((ev) => (
+                            <tr key={ev.id}>
+                              <td>
+                                {ev.kind === "stake"
+                                  ? t.vault.inference.stakeEventStake
+                                  : ev.kind === "unstake"
+                                    ? t.vault.inference.stakeEventUnstake
+                                    : t.vault.inference.stakeEventClaim}
+                              </td>
+                              <td>
+                                {formatUnits(BigInt(ev.amount_atomic || "0"), ev.kind === "claim" ? 6 : 18)}{" "}
+                                {ev.kind === "claim" ? "CREDIT" : "ORBIO"}
+                              </td>
+                              <td>
+                                {ev.tx_hash && (
+                                  <a
+                                    href={`${ROBINHOOD_EXPLORER_URL}/tx/${ev.tx_hash}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    {t.vault.inference.viewTx}
+                                  </a>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                )}
 
                 {isGrantor && !isSuccessionTriggered && (
                   <div className="deposit-field" style={{ marginBottom: "24px" }}>

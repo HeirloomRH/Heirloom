@@ -27,6 +27,12 @@ import {
 import { buildStartLink } from "../lib/telegram.js";
 import { sendCheckinConfirmation } from "../services/telegramAlertService.js";
 import { parseUnits } from "viem";
+import {
+  getStakedPosition,
+  getMinPosition,
+  executeStake,
+  executeUnstake,
+} from "../services/orbioStakeService.js";
 
 export const trustsRouter = Router();
 
@@ -944,6 +950,161 @@ trustsRouter.get("/:id/legs/inference", async (req: Request, res: Response) => {
     console.error("Error fetching inference legs:", err);
     const message = err instanceof Error ? err.message : String(err);
     res.status(500).json({ error: "Failed to fetch inference allowances", details: message });
+  }
+});
+
+/**
+ * GET /api/trusts/:id/stake
+ * Live staked ORBIO position (read straight from the Staking contract) plus
+ * the trust's claim/stake/unstake history.
+ */
+trustsRouter.get("/:id/stake", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const trustRes = await query("SELECT vault_address FROM trusts WHERE id = $1", [id]);
+    if (trustRes.rows.length === 0) {
+      res.status(404).json({ error: "Trust not found" });
+      return;
+    }
+    const vaultAddress = trustRes.rows[0].vault_address;
+
+    const [position, minPosition, stakeRow, events] = await Promise.all([
+      vaultAddress ? getStakedPosition(vaultAddress) : Promise.resolve(0n),
+      getMinPosition(),
+      query("SELECT * FROM trust_stakes WHERE trust_id = $1", [id]),
+      query("SELECT * FROM stake_events WHERE trust_id = $1 ORDER BY created_at DESC LIMIT 50", [
+        id,
+      ]),
+    ]);
+
+    res.json({
+      stakedAtomic: position.toString(),
+      minPositionAtomic: minPosition.toString(),
+      active: stakeRow.rows[0]?.active ?? false,
+      lastClaimAt: stakeRow.rows[0]?.last_claim_at ?? null,
+      events: events.rows,
+    });
+  } catch (err) {
+    console.error("Error fetching stake status:", err);
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: "Failed to fetch stake status", details: message });
+  }
+});
+
+/**
+ * POST /api/trusts/:id/stake
+ * Grantor stakes ORBIO already sitting in the trust's vault. CREDIT accrues
+ * hourly on Orbio's own schedule; stakeClaimWorker sweeps it automatically —
+ * nothing further for the grantor or beneficiary to do.
+ */
+trustsRouter.post("/:id/stake", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { grantorAddress, amountOrbio } = req.body;
+
+    if (!grantorAddress || !amountOrbio) {
+      res.status(400).json({ error: "grantorAddress and amountOrbio are required" });
+      return;
+    }
+
+    const trustRes = await query("SELECT * FROM trusts WHERE id = $1", [id]);
+    if (trustRes.rows.length === 0) {
+      res.status(404).json({ error: "Trust not found" });
+      return;
+    }
+    const trust = trustRes.rows[0];
+
+    if (trust.grantor_address.toLowerCase() !== grantorAddress.toLowerCase()) {
+      res.status(403).json({ error: "Only the designated grantor can stake ORBIO" });
+      return;
+    }
+    if (trust.vault_index === null || trust.vault_index === undefined) {
+      res.status(400).json({ error: "Trust has no dedicated vault yet" });
+      return;
+    }
+
+    const amount = parseUnits(String(amountOrbio), 18);
+    const minPosition = await getMinPosition();
+    if (amount < minPosition) {
+      res.status(400).json({
+        error: `amountOrbio is below the protocol minimum position (${minPosition} atomic ORBIO)`,
+      });
+      return;
+    }
+
+    const txHash = await executeStake(trust.vault_index, amount);
+
+    await query(
+      `INSERT INTO trust_stakes (trust_id, active, staked_at)
+       VALUES ($1, TRUE, NOW())
+       ON CONFLICT (trust_id) DO UPDATE SET active = TRUE, updated_at = NOW()`,
+      [id],
+    );
+    await query(
+      `INSERT INTO stake_events (trust_id, kind, amount_atomic, tx_hash, status)
+       VALUES ($1, 'stake', $2, $3, 'confirmed')`,
+      [id, amount.toString(), txHash],
+    );
+
+    res.json({ success: true, txHash, message: `Staked ${amountOrbio} ORBIO.` });
+  } catch (err) {
+    console.error("Error staking ORBIO:", err);
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: "Failed to stake ORBIO", details: message });
+  }
+});
+
+/**
+ * POST /api/trusts/:id/unstake
+ * Grantor unstakes ORBIO back into the trust's vault.
+ */
+trustsRouter.post("/:id/unstake", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { grantorAddress, amountOrbio } = req.body;
+
+    if (!grantorAddress || !amountOrbio) {
+      res.status(400).json({ error: "grantorAddress and amountOrbio are required" });
+      return;
+    }
+
+    const trustRes = await query("SELECT * FROM trusts WHERE id = $1", [id]);
+    if (trustRes.rows.length === 0) {
+      res.status(404).json({ error: "Trust not found" });
+      return;
+    }
+    const trust = trustRes.rows[0];
+
+    if (trust.grantor_address.toLowerCase() !== grantorAddress.toLowerCase()) {
+      res.status(403).json({ error: "Only the designated grantor can unstake ORBIO" });
+      return;
+    }
+    if (trust.vault_index === null || trust.vault_index === undefined) {
+      res.status(400).json({ error: "Trust has no dedicated vault yet" });
+      return;
+    }
+
+    const amount = parseUnits(String(amountOrbio), 18);
+    const txHash = await executeUnstake(trust.vault_index, amount);
+
+    const remaining = trust.vault_address ? await getStakedPosition(trust.vault_address) : 0n;
+    if (remaining === 0n) {
+      await query(
+        `UPDATE trust_stakes SET active = FALSE, updated_at = NOW() WHERE trust_id = $1`,
+        [id],
+      );
+    }
+    await query(
+      `INSERT INTO stake_events (trust_id, kind, amount_atomic, tx_hash, status)
+       VALUES ($1, 'unstake', $2, $3, 'confirmed')`,
+      [id, amount.toString(), txHash],
+    );
+
+    res.json({ success: true, txHash, message: `Unstaked ${amountOrbio} ORBIO.` });
+  } catch (err) {
+    console.error("Error unstaking ORBIO:", err);
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: "Failed to unstake ORBIO", details: message });
   }
 });
 

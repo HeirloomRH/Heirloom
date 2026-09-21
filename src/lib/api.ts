@@ -410,6 +410,66 @@ export async function fetchInferenceAllowances(
   return { schedules: data.schedules || [], releases: data.releases || [] };
 }
 
+export interface StakeEvent {
+  id: string;
+  trust_id: string;
+  kind: "stake" | "unstake" | "claim";
+  amount_atomic: string;
+  tx_hash: string | null;
+  status: string;
+  detail: string | null;
+  created_at: string;
+}
+
+export interface StakeStatus {
+  stakedAtomic: string;
+  minPositionAtomic: string;
+  active: boolean;
+  lastClaimAt: string | null;
+  events: StakeEvent[];
+}
+
+/** Live staked ORBIO position plus claim/stake/unstake history for a trust. */
+export async function fetchStakeStatus(trustId: string): Promise<StakeStatus | null> {
+  const res = await fetch(`${API_BASE_URL}/api/trusts/${trustId}/stake`);
+  if (!res.ok) return null;
+  return res.json();
+}
+
+/** Grantor stakes ORBIO already sitting in the trust's vault. */
+export async function stakeOrbio(
+  trustId: string,
+  payload: { grantorAddress: string; amountOrbio: string },
+): Promise<{ success: boolean; txHash: string; message: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/trusts/${trustId}/stake`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to stake ORBIO");
+  }
+  return data;
+}
+
+/** Grantor unstakes ORBIO back into the trust's vault. */
+export async function unstakeOrbio(
+  trustId: string,
+  payload: { grantorAddress: string; amountOrbio: string },
+): Promise<{ success: boolean; txHash: string; message: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/trusts/${trustId}/unstake`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to unstake ORBIO");
+  }
+  return data;
+}
+
 export interface TelegramPairingResponse {
   success: boolean;
   pairingToken: string;

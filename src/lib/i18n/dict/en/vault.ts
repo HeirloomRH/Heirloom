@@ -120,6 +120,22 @@ export const vault = {
     releaseDeferredFunds: "Deferred — insufficient vault balance",
     releaseFailed: "Failed",
     viewTx: "View tx",
+
+    stakeTitle: "Stake ORBIO",
+    stakeHint:
+      "Stake once; CREDIT accrues hourly and gets swept into this vault automatically — a standing supply for the allowance above.",
+    stakedLabel: "Currently staked",
+    minPositionNote: (amount: string) => `Minimum position: ${amount} ORBIO`,
+    stakeAmountLabel: "ORBIO to stake",
+    stakeAmountPlaceholder: "e.g. 1000",
+    stakeSubmit: "Stake",
+    staking: "Staking…",
+    unstakeAmountLabel: "ORBIO to unstake",
+    unstakeSubmit: "Unstake",
+    unstaking: "Unstaking…",
+    stakeEventStake: "Staked",
+    stakeEventUnstake: "Unstaked",
+    stakeEventClaim: "CREDIT claimed",
   },
 
   letter: {

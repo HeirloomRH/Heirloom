@@ -3,6 +3,7 @@ import { app } from "./app.js";
 import { migrate } from "./db/migrate.js";
 import { startHeartbeatWorker } from "./services/heartbeatWorker.js";
 import { startInferenceReleaseWorker } from "./services/inferenceReleaseWorker.js";
+import { startStakeClaimWorker } from "./services/stakeClaimWorker.js";
 import { config } from "./config.js";
 
 async function bootstrap() {
@@ -18,6 +19,10 @@ async function bootstrap() {
 
   // Start CREDIT inference-allowance release monitor
   startInferenceReleaseWorker(config.inferenceReleaseIntervalMs);
+
+  // Start ORBIO stake-claim sweep (hourly settlement is Orbio's own keeper;
+  // this just claims whatever's accrued into the vault)
+  startStakeClaimWorker(config.stakeClaimIntervalMs);
 
   app.listen(config.port, () => {
     console.log(

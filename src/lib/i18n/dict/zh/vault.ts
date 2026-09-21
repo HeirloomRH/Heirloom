@@ -122,6 +122,21 @@ export const vault: typeof EnVault = {
     releaseDeferredFunds: "已延迟 — 金库余额不足",
     releaseFailed: "失败",
     viewTx: "查看交易",
+
+    stakeTitle: "质押 ORBIO",
+    stakeHint: "质押一次；CREDIT 按小时累积，并自动汇入此金库——为上方配额提供持续供给。",
+    stakedLabel: "当前质押量",
+    minPositionNote: (amount: string) => `最低质押量：${amount} ORBIO`,
+    stakeAmountLabel: "质押的 ORBIO 数量",
+    stakeAmountPlaceholder: "例如 1000",
+    stakeSubmit: "质押",
+    staking: "质押中…",
+    unstakeAmountLabel: "解除质押的 ORBIO 数量",
+    unstakeSubmit: "解除质押",
+    unstaking: "解除质押中…",
+    stakeEventStake: "已质押",
+    stakeEventUnstake: "已解除质押",
+    stakeEventClaim: "已领取 CREDIT",
   },
 
   letter: {
