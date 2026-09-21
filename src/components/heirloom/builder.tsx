@@ -34,23 +34,10 @@ import {
   validateSchedule,
   validAddress,
 } from "@/lib/heirloom/validation.mjs";
-
-const titles = [
-  "The foundation.",
-  "Someone worth building for.",
-  "Your wishes, written in.",
-  "More than a portfolio.",
-  "A promise, made clear.",
-];
-const descriptions = [
-  "Give their tomorrow a place to begin.",
-  "Put a person at the heart of your plan.",
-  "Choose when and how the future unfolds.",
-  "Tell them why you started.",
-  "Read the plan carefully before saving your trust.",
-];
+import { useT } from "@/lib/i18n";
 
 export function Builder() {
+  const t = useT();
   const navigate = useNavigate();
   const { address } = useAccount();
   const { openConnectModal } = useConnectModal();
@@ -110,21 +97,22 @@ export function Builder() {
 
   const validate = (n: number) => {
     if (n === 0) {
-      if (!name.trim()) return "Give your trust a name.";
-      return validateAllocations(amount, allocations);
+      if (!name.trim()) return t.builder.errors.nameRequired;
+      const code = validateAllocations(amount, allocations);
+      return code ? t.builder.errors[code] : "";
     }
     if (n === 1) {
-      if (!beneficiary.trim()) return "Enter the beneficiary's name.";
+      if (!beneficiary.trim()) return t.builder.errors.beneficiaryRequired;
       if (!validAddress(wallet.trim()))
-        return "Enter a valid wallet address for the beneficiary (0x followed by 40 hex characters).";
+        return t.builder.errors.beneficiaryWallet;
     }
     if (n === 2) {
-      const e = validateSchedule(schedule);
-      if (e) return e;
+      const code = validateSchedule(schedule);
+      if (code) return t.builder.errors[code];
       if (guardian && !validAddress(guardian.trim()))
-        return "Enter a valid guardian wallet, or leave it blank.";
+        return t.builder.errors.guardianWallet;
       if (guardian && guardian.toLowerCase() === wallet.toLowerCase())
-        return "Use a different wallet for the guardian and beneficiary.";
+        return t.builder.errors.guardianSameAsBeneficiary;
     }
     return "";
   };
@@ -150,15 +138,15 @@ export function Builder() {
     }
     const grantorAddr = address || customGrantor.trim();
     if (!grantorAddr || !validAddress(grantorAddr)) {
-      setError("Please connect your wallet or enter a valid grantor wallet address.");
+      setError(t.builder.errors.grantorRequired);
       return;
     }
     if (!ack) {
-      setError("Please acknowledge the trust terms before sealing.");
+      setError(t.builder.errors.ackRequired);
       return;
     }
     if (mode === "irrevocable" && typed !== "IRREVOCABLE") {
-      setError("Type IRREVOCABLE to confirm you understand the permanent terms.");
+      setError(t.builder.errors.typeIrrevocable);
       return;
     }
     setBusy(true);
@@ -214,7 +202,7 @@ export function Builder() {
       setCountdown(3);
       setBusy(false);
     } catch (err: any) {
-      setError(err.message || "Failed to create trust on Robinhood Chain. Please try again.");
+      setError(err.message || t.builder.errors.createFailed);
       setBusy(false);
     }
   };
@@ -223,15 +211,17 @@ export function Builder() {
     <div className="shell">
       <div className="product-breadcrumb">
         <Link to="/app">
-          <ArrowLeft size={13} /> Your workspace
+          <ArrowLeft size={13} /> {t.builder.breadcrumbBack}
         </Link>
-        <span>CREATE A TRUST</span>
+        <span>{t.builder.breadcrumbCurrent}</span>
       </div>
       <div className="builder-layout">
         <div>
-          <div className="wizard-steps" aria-label="Creation progress">
-            {["Portfolio", "Beneficiary", "Terms", "Letter", "Review"].map(
-              (x, i) => (
+          <div
+            className="wizard-steps"
+            aria-label={t.builder.progressAriaLabel}
+          >
+            {t.builder.steps.map((x, i) => (
                 <button
                   key={x}
                   disabled={i > step}
@@ -247,16 +237,15 @@ export function Builder() {
                   <span>{i < step ? <Check size={12} /> : i + 1}</span>
                   {x}
                 </button>
-              ),
-            )}
+            ))}
           </div>
-          <p className="eyebrow">
-            STEP {String(step + 1).padStart(2, "0")} / 05
-          </p>
+          <p className="eyebrow">{t.builder.stepCounter(step + 1)}</p>
           <h1 className="product-title" id="builder-heading" tabIndex={-1}>
-            {titles[step]}
+            {t.builder.titles[step]}
           </h1>
-          <p className="product-description">{descriptions[step]}</p>
+          <p className="product-description">
+            {t.builder.descriptions[step]}
+          </p>
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -267,22 +256,24 @@ export function Builder() {
             {step === 0 && (
               <div className="form-section">
                 <label>
-                  Trust name
+                  {t.builder.step0.nameLabel}
                   <input
                     autoComplete="off"
                     maxLength={70}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Emma's tomorrow"
+                    placeholder={t.builder.step0.namePlaceholder}
                   />
                 </label>
                 <label>
-                  Starting portfolio value{" "}
-                  <span className="field-hint">Illustrative USD amount</span>
+                  {t.builder.step0.amountLabel}{" "}
+                  <span className="field-hint">
+                    {t.builder.step0.amountHint}
+                  </span>
                   <div className="input-prefix">
                     <span>$</span>
                     <input
-                      aria-label="Starting portfolio value"
+                      aria-label={t.builder.step0.amountAriaLabel}
                       type="number"
                       min="1"
                       max="100000000"
@@ -293,16 +284,14 @@ export function Builder() {
                   </div>
                 </label>
                 <div className="field-heading">
-                  <span>Build your basket</span>
+                  <span>{t.builder.step0.basketHeading}</span>
                   <span
                     className={total === 100 ? "text-green" : "text-orange"}
                   >
                     {total}% / 100%
                   </span>
                 </div>
-                <p className="field-hint">
-                  Select token allocations for your trust portfolio.
-                </p>
+                <p className="field-hint">{t.builder.step0.basketHint}</p>
                 <div className="asset-select">
                   {assets.map((a) => {
                     const selected = allocations.find(
@@ -318,7 +307,9 @@ export function Builder() {
                         <button
                           type="button"
                           aria-label={
-                            (selected ? "Remove " : "Add ") + a.symbol
+                            selected
+                              ? t.builder.step0.removeAsset(a.symbol)
+                              : t.builder.step0.addAsset(a.symbol)
                           }
                           aria-pressed={!!selected}
                           onClick={() =>
@@ -347,7 +338,9 @@ export function Builder() {
                         {selected && (
                           <label className="weight-input">
                             <input
-                              aria-label={a.symbol + " allocation percent"}
+                              aria-label={t.builder.step0.allocationPercent(
+                                a.symbol,
+                              )}
                               type="number"
                               min="1"
                               max="100"
@@ -371,25 +364,23 @@ export function Builder() {
                 </div>
                 <div className="form-callout">
                   <Sprout size={17} />
-                  <p>
-                    This basket is a starting point, not an investment recommendation.
-                  </p>
+                  <p>{t.builder.step0.callout}</p>
                 </div>
               </div>
             )}
             {step === 1 && (
               <div className="form-section">
                 <label>
-                  Beneficiary name
+                  {t.builder.step1.nameLabel}
                   <input
                     maxLength={60}
                     value={beneficiary}
                     onChange={(e) => setBeneficiary(e.target.value)}
-                    placeholder="Who is this for?"
+                    placeholder={t.builder.step1.namePlaceholder}
                   />
                 </label>
                 <label>
-                  Beneficiary wallet
+                  {t.builder.step1.walletLabel}
                   <input
                     className="mono"
                     value={wallet}
@@ -400,30 +391,26 @@ export function Builder() {
                     maxLength={42}
                   />
                 </label>
-                <p className="field-hint">
-                  The intended receiving wallet. The address must be correct
-                  before any vault is created.
-                </p>
+                <p className="field-hint">{t.builder.step1.hint}</p>
               </div>
             )}
             {step === 2 && (
               <div className="form-section">
                 <div className="field-heading">
-                  <span>Vesting schedule</span>
+                  <span>{t.builder.step2.scheduleHeading}</span>
                   <span className="field-hint">
-                    {schedule.reduce((s, r) => s + r.percent, 0)}% allocated
+                    {t.builder.step2.allocated(
+                      schedule.reduce((sum, r) => sum + r.percent, 0),
+                    )}
                   </span>
                 </div>
-                <p className="field-hint">
-                  Each percentage is a share of the original portfolio
-                  allocation, not the remaining balance.
-                </p>
+                <p className="field-hint">{t.builder.step2.scheduleHint}</p>
                 <div className="schedule-editor">
                   {schedule.map((r, i) => (
                     <div key={i}>
                       <span>{String(i + 1).padStart(2, "0")}</span>
                       <label>
-                        Release date
+                        {t.builder.step2.releaseDate}
                         <input
                           type="date"
                           value={r.date}
@@ -434,11 +421,11 @@ export function Builder() {
                               ),
                             )
                           }
-                          aria-label={"Release " + (i + 1) + " date"}
+                          aria-label={t.builder.step2.releaseDateAria(i + 1)}
                         />
                       </label>
                       <label>
-                        Release %
+                        {t.builder.step2.releasePercent}
                         <input
                           type="number"
                           min="1"
@@ -453,13 +440,15 @@ export function Builder() {
                               ),
                             )
                           }
-                          aria-label={"Release " + (i + 1) + " percent"}
+                          aria-label={t.builder.step2.releasePercentAria(
+                            i + 1,
+                          )}
                         />
                       </label>
                       <button
                         type="button"
                         className="icon-button"
-                        aria-label={"Remove release " + (i + 1)}
+                        aria-label={t.builder.step2.removeRelease(i + 1)}
                         disabled={schedule.length === 1}
                         onClick={() =>
                           setSchedule(schedule.filter((_, j) => i !== j))
@@ -478,11 +467,11 @@ export function Builder() {
                       setSchedule([...schedule, { date: "", percent: 0 }])
                     }
                   >
-                    <Plus size={13} /> Add a release
+                    <Plus size={13} /> {t.builder.step2.addRelease}
                   </button>
                 )}
                 <fieldset>
-                  <legend>Vault mode</legend>
+                  <legend>{t.builder.step2.modeLegend}</legend>
                   <div className="mode-options">
                     {(["revocable", "irrevocable"] as const).map((m) => (
                       <label
@@ -500,12 +489,14 @@ export function Builder() {
                         />
                         <span>
                           <b>
-                            {m === "revocable" ? "Revocable" : "Irrevocable"}
+                            {m === "revocable"
+                              ? t.builder.step2.revocable
+                              : t.builder.step2.irrevocable}
                           </b>
                           <small>
                             {m === "revocable"
-                              ? "Creator retains the intended ability to revoke."
-                              : "Designed to be permanent once sealed on-chain."}
+                              ? t.builder.step2.revocableNote
+                              : t.builder.step2.irrevocableNote}
                           </small>
                         </span>
                       </label>
@@ -513,24 +504,25 @@ export function Builder() {
                   </div>
                 </fieldset>
                 <label>
-                  Succession check-in window
+                  {t.builder.step2.heartbeatLabel}
                   <select
                     value={heartbeat}
                     onChange={(e) => setHeartbeat(Number(e.target.value))}
                   >
                     <option value="0">
-                      Disabled — no automatic succession
+                      {t.builder.step2.heartbeatDisabled}
                     </option>
-                    <option value="30">Every 30 days</option>
-                    <option value="90">Every 90 days</option>
-                    <option value="180">Every 180 days</option>
-                    <option value="365">Every 365 days</option>
+                    {[30, 90, 180, 365].map((days) => (
+                      <option key={days} value={String(days)}>
+                        {t.builder.step2.heartbeatEvery(days)}
+                      </option>
+                    ))}
                   </select>
                 </label>
                 <label>
-                  Guardian wallet{" "}
+                  {t.builder.step2.guardianLabel}{" "}
                   <span className="field-hint">
-                    Optional · planned bounded oversight
+                    {t.builder.step2.guardianHint}
                   </span>
                   <input
                     value={guardian}
@@ -546,9 +538,9 @@ export function Builder() {
             {step === 3 && (
               <div className="form-section">
                 <div className="letter-editor">
-                  <span className="eyebrow">A LETTER FOR THEIR TOMORROW</span>
+                  <span className="eyebrow">{t.builder.step3.eyebrow}</span>
                   <label className="sr-only" htmlFor="letter">
-                    Letter to your beneficiary
+                    {t.builder.step3.srLabel}
                   </label>
                   <textarea
                     id="letter"
@@ -556,20 +548,15 @@ export function Builder() {
                     onChange={(e) => setLetter(e.target.value)}
                     maxLength={5000}
                     rows={12}
-                    placeholder={
-                      "Dear " +
-                      (beneficiary || "you") +
-                      ",\n\nThis is for the life you'll build…"
-                    }
+                    placeholder={t.builder.step3.placeholder(
+                      beneficiary || t.builder.step3.placeholderFallback,
+                    )}
                   />
                   <span className="field-hint">
-                    {letter.length.toLocaleString()} / 5,000 characters
+                    {t.builder.step3.counter(letter.length.toLocaleString())}
                   </span>
                 </div>
-                <p className="field-hint">
-                  Optional. Your letter is encrypted end-to-end with AES-256-GCM
-                  and stored sealed until milestone releases or succession triggers.
-                </p>
+                <p className="field-hint">{t.builder.step3.hint}</p>
               </div>
             )}
             {step === 4 && (
@@ -581,46 +568,62 @@ export function Builder() {
                   </div>
                   <dl>
                     <div>
-                      <dt>For</dt>
+                      <dt>{t.builder.review.for}</dt>
                       <dd>{beneficiary}</dd>
                     </div>
                     <div>
-                      <dt>Corpus estimate</dt>
+                      <dt>{t.builder.review.corpus}</dt>
                       <dd>{money(amount)}</dd>
                     </div>
                     <div>
-                      <dt>Terms</dt>
-                      <dd className="capitalize">{mode}</dd>
-                    </div>
-                    <div>
-                      <dt>Check-ins</dt>
+                      <dt>{t.builder.review.terms}</dt>
                       <dd>
-                        {heartbeat
-                          ? "Every " + heartbeat + " days"
-                          : "Disabled"}
+                        {mode === "revocable"
+                          ? t.builder.review.modeRevocable
+                          : t.builder.review.modeIrrevocable}
                       </dd>
                     </div>
                     <div>
-                      <dt>Guardian</dt>
-                      <dd>{guardian ? "Registered on-chain" : "None"}</dd>
+                      <dt>{t.builder.review.checkIns}</dt>
+                      <dd>
+                        {heartbeat
+                          ? t.builder.review.checkInsEvery(heartbeat)
+                          : t.builder.review.checkInsDisabled}
+                      </dd>
                     </div>
                     <div>
-                      <dt>Letter</dt>
-                      <dd>{letter ? "Encrypted & sealed" : "Not added"}</dd>
+                      <dt>{t.builder.review.guardian}</dt>
+                      <dd>
+                        {guardian
+                          ? t.builder.review.guardianRegistered
+                          : t.builder.review.guardianNone}
+                      </dd>
                     </div>
                     <div>
-                      <dt>Beneficiary</dt>
+                      <dt>{t.builder.review.letter}</dt>
+                      <dd>
+                        {letter
+                          ? t.builder.review.letterSealed
+                          : t.builder.review.letterNone}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>{t.builder.review.beneficiary}</dt>
                       <dd className="mono break-all">{wallet}</dd>
                     </div>
                     <div>
-                      <dt>Grantor</dt>
+                      <dt>{t.builder.review.grantor}</dt>
                       <dd className="mono break-all">
                         {address ? (
-                          <span style={{ color: "#152a3b", fontWeight: 600 }}>{address} (Connected)</span>
+                          <span style={{ color: "#152a3b", fontWeight: 600 }}>
+                            {address} {t.builder.review.connectedSuffix}
+                          </span>
                         ) : customGrantor ? (
                           <span style={{ color: "#152a3b", fontWeight: 600 }}>{customGrantor}</span>
                         ) : (
-                          <span style={{ color: "#a1543c" }}>Not connected</span>
+                          <span style={{ color: "#a1543c" }}>
+                            {t.builder.review.notConnected}
+                          </span>
                         )}
                       </dd>
                     </div>
@@ -628,10 +631,12 @@ export function Builder() {
 
                   {!address && (
                     <div style={{ marginTop: "12px", padding: "12px 14px", background: "#f0eae0", border: "1px solid #d8cbb8", borderRadius: "4px" }}>
-                      <p className="field-hint" style={{ margin: "0 0 8px 0" }}>Connect your wallet or enter creator address:</p>
+                      <p className="field-hint" style={{ margin: "0 0 8px 0" }}>
+                        {t.builder.review.connectPrompt}
+                      </p>
                       <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                         <button type="button" className="button primary" onClick={openConnectModal} style={{ fontSize: "10px", padding: "6px 14px" }}>
-                          <Wallet size={12} /> Connect Wallet
+                          <Wallet size={12} /> {t.builder.review.connectWallet}
                         </button>
                         <input
                           type="text"
@@ -661,13 +666,10 @@ export function Builder() {
                   <div className="irrevocable-ack">
                     <LockKeyhole size={20} />
                     <div>
-                      <strong>Permanent means permanent.</strong>
-                      <p>
-                        In an irrevocable vault, the grantor cannot undo, reclaim,
-                        or rewrite the terms once sealed.
-                      </p>
+                      <strong>{t.builder.ack.title}</strong>
+                      <p>{t.builder.ack.body}</p>
                       <label>
-                        Type IRREVOCABLE to acknowledge
+                        {t.builder.ack.typeLabel}
                         <input
                           value={typed}
                           onChange={(e) => setTyped(e.target.value)}
@@ -684,9 +686,7 @@ export function Builder() {
                     checked={ack}
                     onChange={(e) => setAck(e.target.checked)}
                   />
-                  <span>
-                    I understand that Heirloom creates a programmable trust vault on Robinhood Chain. My assets will be isolated and managed by code according to these terms.
-                  </span>
+                  <span>{t.builder.ack.checkbox}</span>
                 </label>
               </div>
             )}
@@ -700,19 +700,19 @@ export function Builder() {
                     setError("");
                   }}
                 >
-                  <ArrowLeft size={14} /> Back
+                  <ArrowLeft size={14} /> {t.builder.actions.back}
                 </button>
               ) : (
                 <Link className="text-link" to="/app">
-                  Cancel
+                  {t.builder.actions.cancel}
                 </Link>
               )}
               <button type="submit" disabled={busy} className="button primary">
                 {busy
-                  ? "Sealing trust on-chain…"
+                  ? t.builder.actions.sealing
                   : step === 4
-                    ? "Seal Trust on Robinhood Chain"
-                    : "Continue"}
+                    ? t.builder.actions.seal
+                    : t.builder.actions.continue}
                 {step !== 4 && <ArrowRight size={15} />}
               </button>
             </div>
@@ -720,16 +720,16 @@ export function Builder() {
         </div>
         <aside className="builder-aside">
           <div className="aside-note">
-            <span className="eyebrow">YOUR LEGACY, TAKING SHAPE</span>
+            <span className="eyebrow">{t.builder.aside.eyebrow}</span>
             <Sprout size={35} />
-            <h3>{name || "Something for tomorrow."}</h3>
+            <h3>{name || t.builder.aside.untitled}</h3>
             <p>
               {beneficiary
-                ? "For " + beneficiary + ". With intention."
-                : "A small beginning. A lasting intention."}
+                ? t.builder.aside.forSomeone(beneficiary)
+                : t.builder.aside.noBeneficiary}
             </p>
             <div className="aside-amount">{money(amount || 0)}</div>
-            <span className="micro">ILLUSTRATIVE PORTFOLIO</span>
+            <span className="micro">{t.builder.aside.illustrative}</span>
             <div className="allocation-line">
               {allocations.map((a, i) => (
                 <span
@@ -758,18 +758,19 @@ export function Builder() {
             ))}
             <div className="aside-bottom">
               <ShieldCheck size={14} />
-              <span>Built around your wishes.</span>
+              <span>{t.builder.aside.bottom}</span>
             </div>
           </div>
-          <p className="aside-disclaimer">
-            All values are illustrative. Saved trusts are written to Robinhood Chain.
-          </p>
+          <p className="aside-disclaimer">{t.builder.aside.disclaimer}</p>
         </aside>
       </div>
 
       {/* Error Modal — all validation + API errors go here */}
       {error && (
-        <Dialog title="Check your details" onClose={() => setError("")}>
+        <Dialog
+          title={t.builder.errorDialog.title}
+          onClose={() => setError("")}
+        >
           <div className="dialog-body">
             <div className="flex items-start gap-3">
               <AlertTriangle size={20} className="text-rose-500 mt-0.5 shrink-0" />
@@ -779,7 +780,7 @@ export function Builder() {
             </div>
             <div className="dialog-actions">
               <button className="button primary" onClick={() => setError("")}>
-                Got it
+                {t.builder.errorDialog.gotIt}
               </button>
             </div>
           </div>
@@ -788,7 +789,7 @@ export function Builder() {
 
       {/* Success Modal — auto-dismisses after 3 seconds to the new vault */}
       {successData && (
-        <Dialog title="Trust Sealed On-Chain" onClose={goToVault}>
+        <Dialog title={t.builder.success.title} onClose={goToVault}>
           <div className="dialog-body">
             <div className="flex items-start gap-3.5">
               <div className="success-badge">
@@ -799,19 +800,19 @@ export function Builder() {
                   {successData.name}
                 </h4>
                 <p className="text-xs leading-relaxed text-[#6a5e4d] mb-3">
-                  Your trust has been created on Robinhood Chain with a dedicated vault address:
+                  {t.builder.success.body}
                 </p>
                 <div className="vault-address-snippet">
                   {successData.vaultAddress}
                 </div>
                 <p className="field-hint mt-3 text-[11px] text-[#8a7c68]">
-                  Opening your live vault in {countdown}s…
+                  {t.builder.success.opening(countdown)}
                 </p>
               </div>
             </div>
             <div className="dialog-actions mt-5">
               <button className="button primary" onClick={goToVault}>
-                View Vault Now <ArrowRight size={13} />
+                {t.builder.success.viewVault} <ArrowRight size={13} />
               </button>
             </div>
           </div>
