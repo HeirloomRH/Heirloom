@@ -17,15 +17,24 @@
 
 > **The on-chain trust fund. Generational wealth, programmable.**
 
-The wealthy don't hand their kids cash — they set up trusts: portfolios that vest on schedules, pay allowances, and survive the person who created them. That machinery traditionally costs lawyers, banks, and five figures a year. **HEIRLOOM** turns this into a five-minute on-chain flow: build a portfolio of real tokenized stocks, seal it in a non-custodial trust vault, and program exactly how and when it reaches the people you love — vesting birthdays, monthly allowances, education unlocks, and an automated dead-man's switch.
+> [!IMPORTANT]
+> **Status: custodial beta.** Trust vaults are currently operated by Heirloom's
+> backend — vault addresses are derived from a service-held master key, and
+> distributions are executed by an operator wallet. The on-chain vault contracts
+> described below are specified and in development, not yet deployed. Until they
+> ship and existing trusts migrate, a trust does **not** execute independently of
+> Heirloom: the custody and on-chain-execution properties in this README describe
+> the target architecture, not what runs today.
+
+The wealthy don't hand their kids cash — they set up trusts: portfolios that vest on schedules, pay allowances, and survive the person who created them. That machinery traditionally costs lawyers, banks, and five figures a year. **HEIRLOOM** turns this into a five-minute on-chain flow: build a portfolio of real tokenized stocks, seal it in a dedicated trust vault, and program exactly how and when it reaches the people you love — vesting birthdays, monthly allowances, education unlocks, and an automated dead-man's switch.
 
 ---
 
 ## Core Features
 
-| Feature | Description | On-Chain Execution |
+| Feature | Description | Target On-Chain Execution |
 | :--- | :--- | :--- |
-| **Trust Vaults** | Isolated vaults for tokenized stocks & ETFs with USDG or native asset funding. | Non-custodial vault contracts |
+| **Trust Vaults** | Isolated vaults for tokenized stocks & ETFs with USDG or native asset funding. | Vault contracts (in development) |
 | **Vesting Cliffs** | Multi-stage age/milestone unlocks (e.g. 25% at 18, 25% at 21, remainder at 25). | Immutable schedule executor |
 | **Dead-Man's Switch** | Configurable heartbeat check-ins; succession plan triggers automatically upon missed window. | Heartbeat timestamp checks |
 | **Bounded Guardians** | Optional guardian wallets (family or k-of-n multi-sig) to pause or verify unlocks. | Strictly bounded; cannot redirect corpus |
@@ -68,7 +77,7 @@ The wealthy don't hand their kids cash — they set up trusts: portfolios that v
 | Participant | Role | Objective / Reward |
 | :--- | :--- | :--- |
 | **Grantor** | Creates and funds the trust | Generational wealth secured by code for ~$3 |
-| **Beneficiary** | Receives assets per schedule | Transparent, self-custodied portfolio from day one |
+| **Beneficiary** | Receives assets per schedule | Transparent portfolio from day one |
 | **Guardian** | Bounded oversight | Family trust governance without family drama |
 | **$HEIR Staker**| Backs protocol parameters | Share of creation fees + AUM management fees |
 
