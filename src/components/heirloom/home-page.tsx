@@ -8,8 +8,6 @@ import {
   Sprout,
   Clock3,
   Layers,
-  Check,
-  Plus,
 } from "lucide-react";
 import { Mark } from "./chrome";
 import { VaultIllustration } from "./home-art";
@@ -20,23 +18,33 @@ import {
   HeroHeading,
 } from "./reference-motion";
 import { ContractAddressBadge } from "./contract-address-badge";
+import { useT } from "@/lib/i18n";
+
+// Icon + docs anchor stay in code; the copy is keyed off the dictionary so the
+// deep links never depend on translated text.
+const capabilities = [
+  { key: "portfolio", icon: Layers, hash: "portfolio" },
+  { key: "vesting", icon: Clock3, hash: "schedules" },
+  { key: "heartbeat", icon: Heart, hash: "heartbeat" },
+  { key: "guardians", icon: ShieldCheck, hash: "guardians" },
+  { key: "terms", icon: LockKeyhole, hash: "modes" },
+  { key: "letter", icon: Sprout, hash: "letters" },
+] as const;
 
 export default function Home() {
+  const t = useT();
   return (
     <ReferenceMotion>
       <section className="hero shell">
         <div className="hero-copy">
           <HeroHeading />
           <div className="hero-intro">
-            <p>
-              Bring your portfolio, your people, and your wishes together. Build
-              a future they can grow into.
-            </p>
+            <p>{t.home.hero.intro}</p>
             <Link className="button" to="/create">
-              Create a trust <ArrowUpRight size={15} />
+              {t.home.hero.createCta} <ArrowUpRight size={15} />
             </Link>
             <Link className="hero-sample" to="/vault" search={{ id: "sample" }}>
-              Explore the sample workspace ↗
+              {t.home.hero.sampleCta}
             </Link>
             <div style={{ marginTop: "18px" }}>
               <ContractAddressBadge theme="light" />
@@ -50,103 +58,93 @@ export default function Home() {
         <div className="shell">
           <div className="split-statement">
             <h2>
-              <ShieldCheck /> Your wishes.
+              <ShieldCheck /> {t.home.statement.titleLine1}
               <br />
-              The source of truth.
+              {t.home.statement.titleLine2}
             </h2>
             <div>
-              <p>
-                Keep the portfolio, the people, and the plan in one clear view.
-                Set the rules today, so the people you love can understand
-                tomorrow.
-              </p>
+              <p>{t.home.statement.body}</p>
               <Link className="text-link light" to="/docs" hash="vaults">
-                Understand the vault <ArrowUpRight size={15} />
+                {t.home.statement.cta} <ArrowUpRight size={15} />
               </Link>
             </div>
           </div>
           <div className="atmosphere">
             <div className="soft-orb orb-one" />
             <div className="soft-orb orb-two" />
-            <p className="eyebrow">A CLEAR VIEW OF WHAT COMES NEXT</p>
+            <p className="eyebrow">{t.home.atmosphere.eyebrow}</p>
             <h2>
-              A legacy you can see.
-              <br />A plan they can follow.
+              {t.home.atmosphere.titleLine1}
+              <br />
+              {t.home.atmosphere.titleLine2}
             </h2>
             <VaultIllustration />
             <p className="atmosphere-note">
-              <LockKeyhole size={13} /> Illustrative vault · sample values · no
-              funds held
+              <LockKeyhole size={13} /> {t.home.atmosphere.note}
             </p>
           </div>
           <div className="dark-note">
             <ShieldCheck size={17} />
             <p>
-              <strong>Trust, made explicit.</strong> Guardian permissions are
-              designed to be bounded. The production contracts must enforce
-              every rule.
+              <strong>{t.home.darkNote.lead}</strong> {t.home.darkNote.body}
             </p>
             <Link to="/docs" hash="boundaries">
-              Read the boundaries <ArrowUpRight size={14} />
+              {t.home.darkNote.cta} <ArrowUpRight size={14} />
             </Link>
           </div>
         </div>
       </section>
       <section className="shell workflow">
-        <p className="eyebrow">SMALL STEPS. LASTING INTENTIONS.</p>
-        <h2>From “one day” to day one.</h2>
+        <p className="eyebrow">{t.home.workflow.eyebrow}</p>
+        <h2>{t.home.workflow.title}</h2>
         <div className="workflow-grid">
           <article>
             <div className="workflow-title">
-              <span>01 / Create</span>
+              <span>{t.home.workflow.steps.create.label}</span>
               <Sprout size={19} />
             </div>
-            <p>
-              A first investment in their future. Choose a portfolio and name
-              the person it’s for.
-            </p>
+            <p>{t.home.workflow.steps.create.body}</p>
             <div className="mini-art sand">
               <div className="mini-window">
                 <div className="window-label">
-                  <span className="tiny-square" /> THE BEGINNING
+                  <span className="tiny-square" />{" "}
+                  {t.home.workflow.steps.create.artLabel}
                 </div>
-                <span className="mini-serif">Something to grow.</span>
+                <span className="mini-serif">
+                  {t.home.workflow.steps.create.artTitle}
+                </span>
                 <div className="allocation-line">
                   <span />
                   <span />
                   <span />
                 </div>
                 <div className="spread">
-                  <span>Stock Token basket</span>
+                  <span>{t.home.workflow.steps.create.artBasket}</span>
                   <span>100%</span>
                 </div>
-                <span className="micro">Illustrative allocation</span>
+                <span className="micro">
+                  {t.home.workflow.steps.create.artNote}
+                </span>
               </div>
             </div>
           </article>
           <article>
             <div className="workflow-title">
-              <span>02 / Protect</span>
+              <span>{t.home.workflow.steps.protect.label}</span>
               <ShieldCheck size={19} />
             </div>
-            <p>
-              Make room for life’s milestones. Set dates, allowances, and people
-              who can help.
-            </p>
+            <p>{t.home.workflow.steps.protect.body}</p>
             <div className="mini-art sage">
               <div className="mini-window">
                 <div className="window-label">
-                  <span className="tiny-square" /> THE PLAN
+                  <span className="tiny-square" />{" "}
+                  {t.home.workflow.steps.protect.artLabel}
                 </div>
-                {[
-                  ["18th birthday", "25%"],
-                  ["21st birthday", "25%"],
-                  ["25th birthday", "50%"],
-                ].map(([a, b]) => (
-                  <div className="mini-schedule" key={a}>
+                {t.home.miniSchedule.map((row) => (
+                  <div className="mini-schedule" key={row.label}>
                     <Clock3 size={13} />
-                    <span>{a}</span>
-                    <b>{b}</b>
+                    <span>{row.label}</span>
+                    <b>{row.share}</b>
                   </div>
                 ))}
               </div>
@@ -154,107 +152,63 @@ export default function Home() {
           </article>
           <article>
             <div className="workflow-title">
-              <span>03 / Pass on</span>
+              <span>{t.home.workflow.steps.passOn.label}</span>
               <Heart size={19} />
             </div>
-            <p>
-              Leave more than a portfolio. Add a letter that tells them why you
-              started.
-            </p>
+            <p>{t.home.workflow.steps.passOn.body}</p>
             <div className="mini-art lavender">
               <div className="letter-paper">
-                <span className="micro">A LETTER FOR YOUR TOMORROW</span>
+                <span className="micro">
+                  {t.home.workflow.steps.passOn.letterLabel}
+                </span>
                 <p>
-                  Dear Emma,
+                  {t.home.workflow.steps.passOn.letterLine1}
                   <br />
-                  This is for the life you’ll build.
+                  {t.home.workflow.steps.passOn.letterLine2}
                   <br />
-                  Make it wonderfully yours.
+                  {t.home.workflow.steps.passOn.letterLine3}
                 </p>
-                <span className="signature">With love, always.</span>
+                <span className="signature">
+                  {t.home.workflow.steps.passOn.letterSignature}
+                </span>
               </div>
             </div>
           </article>
         </div>
         <div className="capability-head">
           <h3>
-            A little thought today.
-            <br />A lot taken care of tomorrow.
+            {t.home.capability.headTitleLine1}
+            <br />
+            {t.home.capability.headTitleLine2}
           </h3>
-          <p>One place for the details that matter.</p>
+          <p>{t.home.capability.headBody}</p>
         </div>
         <div className="capability-list">
-          {[
-            [
-              Layers,
-              "Portfolio",
-              "A foundation to build on",
-              "Eligible Stock Tokens and ETFs, with a clear allocation.",
-            ],
-            [
-              Clock3,
-              "Vesting",
-              "The right time, written in",
-              "Cliffs and scheduled releases shaped around your intentions.",
-            ],
-            [
-              Heart,
-              "Heartbeat",
-              "A plan that carries on",
-              "Configurable check-ins for your succession instructions.",
-            ],
-            [
-              ShieldCheck,
-              "Guardians",
-              "A helping hand, with limits",
-              "Named oversight for pauses and milestone approvals.",
-            ],
-            [
-              LockKeyhole,
-              "Vault terms",
-              "A deliberate commitment",
-              "Choose revocable or irrevocable terms, with clear acknowledgement.",
-            ],
-            [
-              Sprout,
-              "A personal letter",
-              "The part only you can write",
-              "Give the portfolio a story, in your own words.",
-            ],
-          ].map(([Icon, title, tag, body]) => {
-            const I = Icon as typeof Layers;
+          {capabilities.map(({ key, icon: Icon, hash }) => {
+            const row = t.home.capability.rows[key];
             return (
               <Link
                 to="/docs"
-                hash={
-                  {
-                    Portfolio: "portfolio",
-                    Vesting: "schedules",
-                    Heartbeat: "heartbeat",
-                    Guardians: "guardians",
-                    "Vault terms": "modes",
-                    "A personal letter": "letters",
-                  }[String(title)] || "vaults"
-                }
+                hash={hash}
                 className="capability-row"
-                key={String(title)}
+                key={key}
               >
                 <span>
-                  <I size={17} />
-                  {String(title)}
+                  <Icon size={17} />
+                  {row.title}
                 </span>
-                <span>{String(tag)}</span>
-                <p>{String(body)}</p>
+                <span>{row.tag}</span>
+                <p>{row.body}</p>
                 <ArrowUpRight size={16} />
               </Link>
             );
           })}
         </div>
         <div className="roadmap-strip">
-          <span className="eyebrow">BUILT FOR THE LONG VIEW</span>
-          <p>Start with a vault. Grow into generations.</p>
+          <span className="eyebrow">{t.home.roadmapStrip.eyebrow}</span>
+          <p>{t.home.roadmapStrip.body}</p>
           <Link className="text-link" to="/roadmap">
-            Explore the roadmap <ArrowRight size={16} />
+            {t.home.roadmapStrip.cta} <ArrowRight size={16} />
           </Link>
         </div>
       </section>
@@ -262,67 +216,80 @@ export default function Home() {
         <div className="shell">
           <div className="split-statement">
             <div>
-              <p className="eyebrow">YOUR FAMILY’S BIGGER PICTURE</p>
+              <p className="eyebrow">{t.home.dashboard.eyebrow}</p>
               <h2>
-                Everything you’re
+                {t.home.dashboard.titleLine1}
                 <br />
-                building for them.
+                {t.home.dashboard.titleLine2}
               </h2>
             </div>
             <div>
-              <p>
-                See your trusts, upcoming milestones, and the people at the
-                heart of each one. A quiet place to keep a long-term promise.
-              </p>
+              <p>{t.home.dashboard.body}</p>
               <Link className="button pale" to="/app">
-                Explore the app <ArrowUpRight size={16} />
+                {t.home.dashboard.cta} <ArrowUpRight size={16} />
               </Link>
             </div>
           </div>
           <div className="dashboard-mock">
             <aside>
               <div className="mock-brand">
-                <Mark /> heirloom
+                <Mark /> {t.common.brand}
               </div>
-              <span className="mock-nav selected">▦ &nbsp; Overview</span>
-              <span className="mock-nav">▱ &nbsp; My trusts</span>
-              <span className="mock-nav">♡ &nbsp; Beneficiaries</span>
-              <span className="mock-nav">◷ &nbsp; Activity</span>
+              <span className="mock-nav selected">
+                ▦ &nbsp; {t.home.dashboard.mock.overview}
+              </span>
+              <span className="mock-nav">
+                ▱ &nbsp; {t.home.dashboard.mock.myTrusts}
+              </span>
+              <span className="mock-nav">
+                ♡ &nbsp; {t.home.dashboard.mock.beneficiaries}
+              </span>
+              <span className="mock-nav">
+                ◷ &nbsp; {t.home.dashboard.mock.activity}
+              </span>
               <div className="mock-user">
-                <span>JD</span> Your family workspace
+                <span>JD</span> {t.home.dashboard.mock.workspace}
               </div>
             </aside>
             <div className="mock-main">
               <div className="spread">
-                <span className="micro">WORKSPACE / OVERVIEW</span>
-                <span className="demo-label">SAMPLE WORKSPACE</span>
+                <span className="micro">
+                  {t.home.dashboard.mock.breadcrumb}
+                </span>
+                <span className="demo-label">
+                  {t.home.dashboard.mock.sampleLabel}
+                </span>
               </div>
-              <h3>For all their tomorrows.</h3>
-              <p>Good intentions, with a plan behind them.</p>
+              <h3>{t.home.dashboard.mock.title}</h3>
+              <p>{t.home.dashboard.mock.subtitle}</p>
               <div className="mock-stats">
                 <div>
-                  <span>Portfolio value</span>
+                  <span>{t.home.dashboard.mock.portfolioValue}</span>
                   <b>
                     $25,000<span>.00</span>
                   </b>
                 </div>
                 <div>
-                  <span>Trust vaults</span>
+                  <span>{t.home.dashboard.mock.trustVaults}</span>
                   <b>1</b>
                 </div>
                 <div>
-                  <span>Next milestone</span>
+                  <span>{t.home.dashboard.mock.nextMilestone}</span>
                   <b>
-                    18th <span>birthday</span>
+                    {t.home.dashboard.mock.milestoneValue}{" "}
+                    <span>{t.home.dashboard.mock.milestoneUnit}</span>
                   </b>
                 </div>
               </div>
               <div className="mock-vault">
                 <div className="spread">
                   <span>
-                    <span className="avatar">E</span> Emma’s tomorrow
+                    <span className="avatar">E</span>{" "}
+                    {t.home.dashboard.mock.vaultName}
                   </span>
-                  <span className="soft-badge">Scheduled</span>
+                  <span className="soft-badge">
+                    {t.home.dashboard.mock.scheduled}
+                  </span>
                 </div>
                 <div className="mock-chart">
                   <svg viewBox="0 0 700 110" preserveAspectRatio="none">
@@ -335,9 +302,10 @@ export default function Home() {
                   </svg>
                 </div>
                 <div className="spread">
-                  <span>Illustrative chart · not investment performance</span>
+                  <span>{t.home.dashboard.mock.chartNote}</span>
                   <Link to="/vault" search={{ id: "sample" }}>
-                    View trust <ArrowUpRight size={14} />
+                    {t.home.dashboard.mock.viewTrust}{" "}
+                    <ArrowUpRight size={14} />
                   </Link>
                 </div>
               </div>
@@ -350,15 +318,16 @@ export default function Home() {
           <span className="orange-mark">
             <Mark />
           </span>
-          <p className="eyebrow">SOMETHING THEY’LL CARRY FORWARD.</p>
+          <p className="eyebrow">{t.home.finalCta.eyebrow}</p>
           <h2>
-            The best time to start
-            <br />a legacy is today.
+            {t.home.finalCta.titleLine1}
+            <br />
+            {t.home.finalCta.titleLine2}
           </h2>
           <Link className="button primary" to="/create">
-            Create your first trust <ArrowUpRight size={17} />
+            {t.home.finalCta.cta} <ArrowUpRight size={17} />
           </Link>
-          <p className="micro">Explore the demo. Imagine the possibilities.</p>
+          <p className="micro">{t.home.finalCta.note}</p>
         </div>
       </section>
     </ReferenceMotion>

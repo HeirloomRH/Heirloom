@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { usePageMeta } from "@/lib/i18n/use-page-meta";
 import Home from "@/components/heirloom/home-page";
 
 export const Route = createFileRoute("/")({
@@ -20,5 +21,10 @@ export const Route = createFileRoute("/")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: Home,
+  component: HomePage,
 });
+
+function HomePage() {
+  usePageMeta("home");
+  return <Home />;
+}

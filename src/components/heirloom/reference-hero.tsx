@@ -5,26 +5,15 @@ import { useGSAP } from "@gsap/react";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Pause, Play } from "lucide-react";
 import { Mark } from "./chrome";
+import { useT } from "@/lib/i18n";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
-const steps = [
-  [
-    "Build the portfolio.",
-    "Bring your long-term intentions together with a basket of eligible Stock Tokens and ETFs.",
-  ],
-  [
-    "Connect the people and the plan.",
-    "Set beneficiaries, milestones, and guardian permissions. Your wishes become the rules.",
-  ],
-  [
-    "See what comes next.",
-    "Keep the portfolio, scheduled releases, and personal letters in one clear view.",
-  ],
-];
 const sceneTimes = [0, 4.5, 7.7];
 
 export function ReferenceHero() {
+  const t = useT();
+  const steps = t.home.reference.steps;
   const root = useRef<HTMLDivElement>(null);
   const timeline = useRef<gsap.core.Timeline | null>(null);
   const playing = useRef(true);
@@ -204,7 +193,7 @@ export function ReferenceHero() {
       <div className="hero-edge edge-f" />
       <div
         className="hero-canvas"
-        aria-label="Animated illustration: a portfolio becomes a connected plan, then a family workspace"
+        aria-label={t.home.reference.ariaLabel}
       >
         <div className="hero-scene scene-orbit" aria-hidden="true">
           <div className="orbit-scale">
@@ -259,14 +248,7 @@ export function ReferenceHero() {
               <Mark />
               <span className="graph-scan" />
             </div>
-            {[
-              "Portfolio",
-              "Beneficiaries",
-              "Milestones",
-              "Guardians",
-              "Your wishes",
-              "A lasting legacy",
-            ].map((name, i) => (
+            {t.home.reference.nodes.map((name, i) => (
               <div key={name} className={`graph-node graph-node-${i}`}>
                 <span className="node-square" />
                 <span>{name}</span>
@@ -332,7 +314,7 @@ export function ReferenceHero() {
         <button
           className="hero-playback"
           onClick={toggle}
-          aria-label={paused ? "Play hero animation" : "Pause hero animation"}
+          aria-label={paused ? t.home.reference.play : t.home.reference.pause}
           aria-pressed={paused}
           disabled={reduced.current}
         >
@@ -342,9 +324,9 @@ export function ReferenceHero() {
       <div
         className="reference-steps"
         id="how-it-works"
-        aria-label="How Heirloom works"
+        aria-label={t.home.reference.sectionLabel}
       >
-        {steps.map(([title, body], i) => (
+        {steps.map(({ title, body }, i) => (
           <button
             className={
               active === i ? "reference-step active" : "reference-step"
