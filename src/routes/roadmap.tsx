@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { usePageMeta } from "@/lib/i18n/use-page-meta";
 import RoadmapPage from "@/components/heirloom/roadmap-page";
 
 export const Route = createFileRoute("/roadmap")({
@@ -19,5 +20,10 @@ export const Route = createFileRoute("/roadmap")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: RoadmapPage,
+  component: RoadmapRoute,
 });
+
+function RoadmapRoute() {
+  usePageMeta("roadmap");
+  return <RoadmapPage />;
+}

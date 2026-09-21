@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { usePageMeta } from "@/lib/i18n/use-page-meta";
 import { Docs } from "@/components/heirloom/docs";
 
 export const Route = createFileRoute("/docs")({
@@ -23,6 +24,7 @@ export const Route = createFileRoute("/docs")({
 });
 
 function DocsPage() {
+  usePageMeta("docs");
   return (
     <main id="main">
       <Docs />
