@@ -51,6 +51,10 @@ export const V3_QUOTER_ADDRESS = (env("VITE_V3_QUOTER_ADDRESS") ??
 export const WETH_ADDRESS = (env("VITE_WETH_ADDRESS") ??
   "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73") as Address;
 
+/** Canonical USDG on Robinhood Chain, from the backend token catalog (6 decimals). */
+export const USDG_ADDRESS = (env("VITE_USDG_ADDRESS") ??
+  "0x5fc5360d0400a0fd4f2af552add042d716f1d168") as Address;
+
 /**
  * Standard v3 fee tiers. Ordered cheapest-first only for readability — the
  * quoter picks by actual output, never by position in this list.
@@ -161,12 +165,59 @@ function assertUint256(value: bigint, label: string): bigint {
   return value;
 }
 
+/** Minimal ERC-20 ABI for allowances, approvals, and transfers. */
+export const erc20Abi = [
+  {
+    name: "allowance",
+    type: "function",
+    stateMutability: "view",
+    inputs: [
+      { name: "owner", type: "address" },
+      { name: "spender", type: "address" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    name: "approve",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    name: "transfer",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "to", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    name: "balanceOf",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "account", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+] as const;
+
 /**
  * Encode a planned basket as one `multicall`.
  *
+ * For native ETH inputs:
  * Every leg is an `exactInputSingle` paying WETH (which SwapRouter02 mints from
  * `msg.value`) and delivering to the vault. A trailing `refundETH` returns
  * whatever the pools did not consume, so nothing is stranded in the router.
+ *
+ * For USDG inputs:
+ * Every leg is an `exactInputSingle` paying USDG (pulled from grantor via ERC-20
+ * transferFrom) and delivering directly to the vault. No refundETH is needed, and
+ * msg.value is 0.
  */
 export function encodeBasketDeposit(params: {
   plan: BasketPlan;
@@ -183,6 +234,8 @@ export function encodeBasketDeposit(params: {
       "Cannot encode a plan with unquoted legs; every leg needs a minimum output",
     );
 
+  const isUsdg = plan.inputSymbol === "USDG";
+  const tokenInAddress = isUsdg ? USDG_ADDRESS : WETH_ADDRESS;
   const calls: Hex[] = [];
 
   for (const swap of plan.swaps) {
@@ -199,9 +252,9 @@ export function encodeBasketDeposit(params: {
         functionName: "exactInputSingle",
         args: [
           {
-            // SwapRouter02 wraps msg.value when tokenIn is WETH, so a native
-            // deposit needs no approval and no separate wrap call.
-            tokenIn: WETH_ADDRESS,
+            // SwapRouter02 wraps msg.value when tokenIn is WETH.
+            // When tokenIn is USDG, it executes transferFrom(msg.sender, pool, amountIn).
+            tokenIn: tokenInAddress,
             tokenOut: swap.tokenAddress as Address,
             fee: swap.routing.fee,
             recipient,
@@ -217,15 +270,17 @@ export function encodeBasketDeposit(params: {
     );
   }
 
-  // Rounding dust and any unspent input go home, not into the router.
-  calls.push(
-    encodeFunctionData({ abi: swapRouterAbi, functionName: "refundETH" }),
-  );
+  // Rounding dust and any unspent input go home for native ETH deposits.
+  if (!isUsdg) {
+    calls.push(
+      encodeFunctionData({ abi: swapRouterAbi, functionName: "refundETH" }),
+    );
+  }
 
   return {
     calls,
     deadline: BigInt(Math.floor(Date.now() / 1000) + deadlineSeconds),
-    value: plan.totalWei,
+    value: isUsdg ? 0n : plan.totalWei,
   };
 }
 
@@ -240,6 +295,32 @@ export function buildBasketDepositRequest(
     functionName: "multicall" as const,
     args: [deadline, calls] as const,
     value,
+  };
+}
+
+/** Build ready-to-spread writeContract arguments for approving USDG spending on SwapRouter02. */
+export function buildUsdgApprovalRequest(params: {
+  amount: bigint;
+  spender?: Address;
+}) {
+  return {
+    address: USDG_ADDRESS,
+    abi: erc20Abi,
+    functionName: "approve" as const,
+    args: [params.spender ?? SWAP_ROUTER_ADDRESS, params.amount] as const,
+  };
+}
+
+/** Build ready-to-spread writeContract arguments for transferring direct USDG passthrough to the vault. */
+export function buildUsdgTransferRequest(params: {
+  to: Address;
+  amount: bigint;
+}) {
+  return {
+    address: USDG_ADDRESS,
+    abi: erc20Abi,
+    functionName: "transfer" as const,
+    args: [params.to, params.amount] as const,
   };
 }
 
@@ -273,7 +354,12 @@ async function quoteBestTier(
   client: PublicClient,
   tokenOut: Address,
   amountIn: bigint,
+  tokenIn: Address = WETH_ADDRESS,
 ): Promise<{ amountOut: bigint; fee: number } | null> {
+  if (tokenOut.toLowerCase() === tokenIn.toLowerCase()) {
+    return { amountOut: amountIn, fee: 0 };
+  }
+
   type Tier = { amountOut: bigint; fee: number };
   const tiers = await Promise.all(
     V3_FEE_TIERS.map(async (fee): Promise<Tier | null> => {
@@ -282,7 +368,7 @@ async function quoteBestTier(
           address: V3_FACTORY_ADDRESS,
           abi: factoryAbi,
           functionName: "getPool",
-          args: [WETH_ADDRESS, tokenOut, fee],
+          args: [tokenIn, tokenOut, fee],
         });
         if (!pool || pool === zeroAddress) return null;
 
@@ -292,7 +378,7 @@ async function quoteBestTier(
           functionName: "quoteExactInputSingle",
           args: [
             {
-              tokenIn: WETH_ADDRESS,
+              tokenIn,
               tokenOut,
               amountIn,
               fee,
@@ -325,11 +411,12 @@ async function quoteBestTier(
 export async function quoteBasketLegs(
   client: PublicClient,
   legs: QuoteRequestLeg[],
+  inputToken: Address = WETH_ADDRESS,
 ): Promise<BasketQuoteMap> {
   const results = await Promise.all(
     legs.map(async (leg) => {
       if (leg.amountIn <= 0n) return null;
-      const best = await quoteBestTier(client, leg.tokenAddress, leg.amountIn);
+      const best = await quoteBestTier(client, leg.tokenAddress, leg.amountIn, inputToken);
       return { leg, best };
     }),
   );

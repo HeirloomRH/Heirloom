@@ -140,18 +140,24 @@ export const vault: typeof EnVault = {
     modeLabel: "您希望如何注资？",
     modeDirect: "转入单一资产",
     modeDirectHint: "将单一代币直接转账至金库。",
-    modeBasket: "使用 ETH 存入（自动拆分篮子）",
+    modeBasket: "使用 ETH 或 USDG 存入（自动拆分篮子）",
     modeBasketHint:
-      "一次性支付 ETH。路由器将买入整个资产篮子，并在同一笔交易中交付至金库。",
+      "一次性支付 ETH 或 USDG。路由器将买入整个资产篮子，并在同一笔交易中交付至金库。",
+
+    inputAssetLabel: "存入币种",
+    inputAssetEth: "ETH",
+    inputAssetUsdg: "USDG（美元稳定币）",
 
     basketIntro:
       "您的 ETH 将按本信托的目标配置比例拆分，并在同一笔交易中完成兑换。代币会直接交付至金库地址，不会经过您的钱包。",
-    basketAmountLabel: "存入的 ETH",
+    basketIntroUsdg:
+      "您的 USDG 将按本信托的目标配置比例拆分。股票代币将通过 Robinhood Chain 流动池买入，USDG 目标比例将直接转入金库。",
+    basketAmountLabel: "存入数量",
     basketAmountPlaceholder: "例如 0.5",
     basketBalance: "您的余额：",
     basketPreviewTitle: "您将收到",
     colTarget: "目标比例",
-    colSpend: "投入 ETH",
+    colSpend: "投入份额",
     colReceive: "预计收到",
     estimateUnavailable: "无报价",
     passthroughNote: "原样持有",
@@ -159,6 +165,11 @@ export const vault: typeof EnVault = {
     basketRouted: "已兑换",
     basketPassthrough: "已转账",
     basketTotal: "合计",
+
+    approveUsdg: "授权 USDG",
+    approvingUsdg: "正在授权 USDG……",
+    approvalSubmitted: "USDG 授权交易已提交至 Robinhood Chain……",
+    approvalSuccess: "USDG 授权成功！",
 
     slippageLabel: "滑点容忍度",
     slippageHint:
@@ -216,6 +227,8 @@ export const vault: typeof EnVault = {
     quotesRequired: "签署篮子存入前必须获取实时报价。",
     insufficientEth: (balance: string) =>
       `ETH 不足。您已连接的钱包在 Robinhood Chain 上持有 ${balance} ETH。`,
+    insufficientUsdg: (balance: string) =>
+      `USDG 余额不足。您当前连接的钱包在 Robinhood Chain 上持有 ${balance} USDG。`,
   },
 
   success: {

@@ -255,3 +255,69 @@ test("bad inputs are refused with a code, not a thrown error", () => {
     "slippage_too_high",
   );
 });
+
+test("USDG input splits cleanly in 6 decimals and marks USDG leg as passthrough", () => {
+  const FIVE_HUNDRED_USDG = 500_000_000n; // 500 USDG (6 decimals)
+  const plan = planBasketDeposit({
+    totalWei: FIVE_HUNDRED_USDG,
+    legs: SAMPLE_LEGS, // 40% SPCX, 35% AAPL, 25% USDG
+    quotes: {
+      SPCX: { amountOut: 10_000_000_000_000_000_000n }, // 10 SPCX
+      AAPL: { amountOut: 1_000_000_000_000_000_000n },  // 1 AAPL
+      USDG: { amountOut: 125_000_000n },                 // 125 USDG
+    },
+    slippageBps: 100,
+    inputSymbol: "USDG",
+    fallbackSymbol: "USDG",
+  });
+
+  assert.equal(plan.error, "");
+  assert.equal(plan.inputSymbol, "USDG");
+  assert.equal(plan.totalWei, FIVE_HUNDRED_USDG);
+  assert.equal(plan.passthroughWei, 125_000_000n); // 25% of 500
+  assert.equal(plan.routedWei, 375_000_000n);      // 75% of 500
+
+  // 2 swaps (SPCX and AAPL), 1 passthrough (USDG)
+  assert.equal(plan.swaps.length, 2);
+  const usdgLeg = plan.legs.find((l) => l.symbol === "USDG");
+  assert.equal(usdgLeg.route, "passthrough");
+  assert.equal(usdgLeg.amountIn, 125_000_000n);
+  assert.equal(usdgLeg.quotedOut, 125_000_000n);
+  assert.equal(usdgLeg.minOut, 125_000_000n);
+
+  const spcxLeg = plan.legs.find((l) => l.symbol === "SPCX");
+  assert.equal(spcxLeg.route, "swap");
+  assert.equal(spcxLeg.amountIn, 200_000_000n); // 40% of 500
+  assert.equal(plan.fullyQuoted, true);
+});
+
+test("USDG input with illiquid equity leg retains input USDG without redundant swap", () => {
+  const FIVE_HUNDRED_USDG = 500_000_000n;
+  const plan = planBasketDeposit({
+    totalWei: FIVE_HUNDRED_USDG,
+    legs: SAMPLE_LEGS,
+    quotes: {
+      SPCX: { amountOut: 10_000_000_000_000_000_000n },
+      AAPL: { amountOut: 0n, liquid: false }, // illiquid
+      USDG: { amountOut: 125_000_000n },
+    },
+    slippageBps: 100,
+    inputSymbol: "USDG",
+    fallbackSymbol: "USDG",
+  });
+
+  assert.equal(plan.error, "");
+  // AAPL fell back to USDG, which is the input currency!
+  const aaplLeg = plan.legs.find((l) => l.symbol === "AAPL");
+  assert.equal(aaplLeg.route, "fallback");
+  assert.equal(aaplLeg.quotedOut, 175_000_000n);
+  assert.equal(aaplLeg.minOut, 175_000_000n);
+
+  // Passthrough is 125 USDG (USDG leg) + 175 USDG (AAPL fallback) = 300 USDG
+  assert.equal(plan.passthroughWei, 300_000_000n);
+  // Only 1 swap needed (SPCX for 200 USDG)
+  assert.equal(plan.swaps.length, 1);
+  assert.equal(plan.swaps[0].symbol, "SPCX");
+  assert.equal(plan.fullyQuoted, true);
+});
+

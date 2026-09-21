@@ -143,18 +143,24 @@ export const vault = {
     modeLabel: "How would you like to fund this?",
     modeDirect: "Send one asset",
     modeDirectHint: "Transfer a single token straight to the vault.",
-    modeBasket: "Deposit with ETH (Auto-Split Basket)",
+    modeBasket: "Deposit with ETH or USDG (Auto-Split Basket)",
     modeBasketHint:
-      "Pay once in ETH. The router buys the whole basket and delivers it to the vault in a single transaction.",
+      "Pay once in ETH or USDG. The router buys the whole basket and delivers it to the vault in a single transaction.",
+
+    inputAssetLabel: "Deposit Currency",
+    inputAssetEth: "ETH",
+    inputAssetUsdg: "USDG (Dollar)",
 
     basketIntro:
       "Your ETH is split across this trust's target allocations and swapped in one transaction. The tokens are delivered straight to the vault address, never to your wallet.",
-    basketAmountLabel: "ETH to deposit",
+    basketIntroUsdg:
+      "Your USDG is split across this trust's target allocations in one transaction. Equity tokens are bought on Robinhood Chain pools, and any USDG target is sent straight to the vault.",
+    basketAmountLabel: "Amount to deposit",
     basketAmountPlaceholder: "e.g. 0.5",
     basketBalance: "Your balance:",
     basketPreviewTitle: "You will receive",
     colTarget: "Target",
-    colSpend: "ETH in",
+    colSpend: "Input share",
     colReceive: "Est. received",
     estimateUnavailable: "No quote",
     passthroughNote: "Held as-is",
@@ -162,6 +168,11 @@ export const vault = {
     basketRouted: "Swapped",
     basketPassthrough: "Transferred",
     basketTotal: "Total",
+
+    approveUsdg: "Approve USDG",
+    approvingUsdg: "Approving USDG…",
+    approvalSubmitted: "USDG approval transaction submitted to Robinhood Chain…",
+    approvalSuccess: "USDG approved for SwapRouter!",
 
     slippageLabel: "Slippage tolerance",
     slippageHint:
@@ -223,6 +234,8 @@ export const vault = {
       "Live quotes are required before a basket deposit can be signed.",
     insufficientEth: (balance: string) =>
       `Insufficient ETH. Your connected wallet holds ${balance} ETH on Robinhood Chain.`,
+    insufficientUsdg: (balance: string) =>
+      `Insufficient USDG. Your connected wallet holds ${balance} USDG on Robinhood Chain.`,
   },
 
   success: {

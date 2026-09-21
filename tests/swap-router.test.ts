@@ -4,9 +4,12 @@ import { planBasketDeposit } from "../src/lib/heirloom/basket.mjs";
 import {
   encodeBasketDeposit,
   buildBasketDepositRequest,
+  buildUsdgApprovalRequest,
+  buildUsdgTransferRequest,
   swapRouterAbi,
   SWAP_ROUTER_ADDRESS,
   WETH_ADDRESS,
+  USDG_ADDRESS,
   V3_FEE_TIERS,
 } from "../src/lib/heirloom/swap-router";
 
@@ -215,3 +218,49 @@ test("an illiquid leg is folded into USDG, keeping the deposit whole", () => {
     /unquoted legs/,
   );
 });
+
+test("USDG basket deposit encodes with tokenIn = USDG_ADDRESS, value = 0n, and no refundETH", () => {
+  const FIVE_HUNDRED_USDG = 500_000_000n;
+  const usdgPlan = planBasketDeposit({
+    totalWei: FIVE_HUNDRED_USDG,
+    legs: LEGS,
+    quotes: {
+      SPCX: { amountOut: 10_000_000_000_000_000_000n, routing: { type: "direct", fee: 500 } },
+      AAPL: { amountOut: 1_000_000_000_000_000_000n, routing: { type: "direct", fee: 500 } },
+      USDG: { amountOut: 125_000_000n, routing: null },
+    },
+    inputSymbol: "USDG",
+    fallbackSymbol: "USDG",
+  });
+
+  const call = encodeBasketDeposit({ plan: usdgPlan, recipient: VAULT });
+
+  // 2 swaps (SPCX and AAPL), 0 refundETH calls
+  expect(call.calls.length).toBe(2);
+  expect(call.value).toBe(0n); // ERC-20 has zero msg.value
+
+  const functionNames = call.calls.map((d) => decodeCall(d).functionName);
+  expect(functionNames).toEqual(["exactInputSingle", "exactInputSingle"]);
+
+  for (let i = 0; i < 2; i++) {
+    const p = swapParams(call.calls[i]);
+    expect(String(p.tokenIn).toLowerCase()).toBe(USDG_ADDRESS.toLowerCase());
+    expect(p.recipient).toBe(VAULT);
+    expect(p.amountIn).toBe(usdgPlan.swaps[i].amountIn);
+  }
+});
+
+test("buildUsdgApprovalRequest creates correct approve call for router", () => {
+  const req = buildUsdgApprovalRequest({ amount: 375_000_000n });
+  expect(req.address).toBe(USDG_ADDRESS);
+  expect(req.functionName).toBe("approve");
+  expect(req.args).toEqual([SWAP_ROUTER_ADDRESS, 375_000_000n]);
+});
+
+test("buildUsdgTransferRequest creates correct transfer call for direct passthrough", () => {
+  const req = buildUsdgTransferRequest({ to: VAULT, amount: 125_000_000n });
+  expect(req.address).toBe(USDG_ADDRESS);
+  expect(req.functionName).toBe("transfer");
+  expect(req.args).toEqual([VAULT, 125_000_000n]);
+});
+

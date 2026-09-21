@@ -55,6 +55,10 @@ import {
   checkRouterAvailability,
   quoteBasketLegs,
   buildBasketDepositRequest,
+  buildUsdgApprovalRequest,
+  buildUsdgTransferRequest,
+  SWAP_ROUTER_ADDRESS,
+  USDG_ADDRESS,
   type RouterAvailability,
 } from "@/lib/heirloom/swap-router";
 
@@ -130,12 +134,14 @@ export function VaultView() {
     ? formatUnits(userTokenBalanceRaw, tokenDecimals)
     : undefined;
 
-  // --- Atomic basket deposit (pay once in ETH, land the whole basket) ---
+  // --- Atomic basket deposit (pay once in ETH or USDG, land the whole basket) ---
   const [depositMode, setDepositMode] = useState<"direct" | "basket">("direct");
+  const [basketInputAsset, setBasketInputAsset] = useState<"ETH" | "USDG">("ETH");
   const [slippageBps, setSlippageBps] = useState(100); // 1.0%, per spec
   const [routerStatus, setRouterStatus] = useState<RouterAvailability | null>(null);
   const [basketQuotes, setBasketQuotes] = useState<Record<string, BasketQuote>>({});
   const [quoting, setQuoting] = useState(false);
+  const [approvingUsdg, setApprovingUsdg] = useState(false);
 
   const publicClient = usePublicClient({ chainId: ROBINHOOD_CHAIN_ID });
 
@@ -144,6 +150,32 @@ export function VaultView() {
     chainId: ROBINHOOD_CHAIN_ID,
     query: { enabled: !!address },
   });
+
+  const { data: usdgBalanceRaw, refetch: refetchUsdgBalance } = useReadContract({
+    address: USDG_ADDRESS,
+    abi: erc20Abi,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    chainId: ROBINHOOD_CHAIN_ID,
+    query: {
+      enabled: !!address,
+    },
+  });
+
+  const { data: usdgAllowanceRaw, refetch: refetchUsdgAllowance } = useReadContract({
+    address: USDG_ADDRESS,
+    abi: erc20Abi,
+    functionName: "allowance",
+    args: address ? [address, SWAP_ROUTER_ADDRESS] : undefined,
+    chainId: ROBINHOOD_CHAIN_ID,
+    query: {
+      enabled: !!address,
+    },
+  });
+
+  const usdgBalance =
+    usdgBalanceRaw !== undefined ? formatUnits(usdgBalanceRaw, 6) : "0";
+  const usdgAllowance = usdgAllowanceRaw ?? 0n;
 
   // Leave headroom for gas so "MAX" cannot produce a transaction that could
   // never be included.
@@ -175,7 +207,10 @@ export function VaultView() {
     if (!depositAmount || isNaN(amount) || amount <= 0) return null;
     let totalWei: bigint;
     try {
-      totalWei = parseEther(depositAmount.trim());
+      totalWei =
+        basketInputAsset === "USDG"
+          ? parseUnits(depositAmount.trim(), 6)
+          : parseEther(depositAmount.trim());
     } catch {
       return null;
     }
@@ -184,10 +219,10 @@ export function VaultView() {
       legs: basketLegs,
       quotes: basketQuotes,
       slippageBps,
-      inputSymbol: "ETH",
+      inputSymbol: basketInputAsset,
       fallbackSymbol: "USDG",
     }) as BasketPlan;
-  }, [depositAmount, basketLegs, basketQuotes, slippageBps]);
+  }, [depositAmount, basketLegs, basketQuotes, slippageBps, basketInputAsset]);
 
   // Confirm the venue exists before the UI offers to spend anyone's ETH.
   useEffect(() => {
@@ -223,6 +258,7 @@ export function VaultView() {
               decimals: leg.decimals,
               amountIn: leg.amountIn,
             })),
+          basketInputAsset === "USDG" ? USDG_ADDRESS : undefined,
         );
         if (!cancelled) setBasketQuotes(quotes);
       } catch {
@@ -236,7 +272,7 @@ export function VaultView() {
       clearTimeout(timer);
     };
     // Depends on the split, not on the quote map that the split produces.
-  }, [dialog, depositMode, publicClient, routerStatus, depositAmount, slippageBps]);
+  }, [dialog, depositMode, publicClient, routerStatus, depositAmount, slippageBps, basketInputAsset]);
 
   // Planner and validator codes share the vault error dictionary.
   const codeToMessage = (code: string): string => {
@@ -376,7 +412,35 @@ export function VaultView() {
     }
   };
 
-  // Atomic Basket Deposit Handler — native ETH in, whole basket out
+  // Approve USDG for SwapRouter02
+  const handleApproveUsdg = async () => {
+    if (!basketPlan || !address) return;
+    setApprovingUsdg(true);
+    setError("");
+    try {
+      const approveReq = buildUsdgApprovalRequest({
+        amount: basketPlan.routedWei,
+        spender: SWAP_ROUTER_ADDRESS,
+      });
+      const hash = await writeContractAsync({
+        ...approveReq,
+        chainId: ROBINHOOD_CHAIN_ID,
+      });
+      setNotice(t.vault.deposit.approvalSubmitted);
+      if (publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash });
+      }
+      await refetchUsdgAllowance();
+      setNotice(t.vault.deposit.approvalSuccess);
+    } catch (e: any) {
+      const msg = e?.shortMessage || e?.message || t.vault.errors.txFailed;
+      setError(msg);
+    } finally {
+      setApprovingUsdg(false);
+    }
+  };
+
+  // Atomic Basket Deposit Handler — native ETH or USDG in, whole basket out
   const handleBasketDeposit = async () => {
     if (!realTrust || !vault?.vaultAddress) return;
     if (!address) {
@@ -400,31 +464,73 @@ export function VaultView() {
       setError(t.vault.errors.quotesRequired);
       return;
     }
-    if (
-      nativeBalance !== undefined &&
-      nativeBalance.value < basketPlan.totalWei + GAS_RESERVE_WEI
-    ) {
-      setError(t.vault.errors.insufficientEth(formatEther(nativeBalance.value)));
-      return;
+
+    if (basketInputAsset === "USDG") {
+      if (usdgBalanceRaw !== undefined && usdgBalanceRaw < basketPlan.totalWei) {
+        setError(t.vault.errors.insufficientUsdg(formatUnits(usdgBalanceRaw, 6)));
+        return;
+      }
+      if (basketPlan.routedWei > 0n && usdgAllowance < basketPlan.routedWei) {
+        setError(t.vault.deposit.approveUsdg);
+        return;
+      }
+    } else {
+      if (
+        nativeBalance !== undefined &&
+        nativeBalance.value < basketPlan.totalWei + GAS_RESERVE_WEI
+      ) {
+        setError(t.vault.errors.insufficientEth(formatEther(nativeBalance.value)));
+        return;
+      }
     }
 
     setBusy(true);
     setError("");
     try {
-      // No refund recipient: SwapRouter02's refundETH always pays msg.sender,
-      // which is the grantor signing this transaction.
-      const request = buildBasketDepositRequest({
-        plan: basketPlan,
-        recipient: vault.vaultAddress as `0x${string}`,
-      });
+      let lastTxHash: `0x${string}` | undefined;
 
-      const txHash = await writeContractAsync({
-        ...request,
-        chainId: ROBINHOOD_CHAIN_ID,
-      });
+      if (basketPlan.inputSymbol === "USDG") {
+        if (basketPlan.swaps.length > 0) {
+          const request = buildBasketDepositRequest({
+            plan: basketPlan,
+            recipient: vault.vaultAddress as `0x${string}`,
+          });
 
-      setDepositTxHash(txHash);
-      setDialog("deposit_pending");
+          lastTxHash = await writeContractAsync({
+            ...request,
+            chainId: ROBINHOOD_CHAIN_ID,
+          });
+        }
+
+        if (basketPlan.passthroughWei > 0n) {
+          const transferReq = buildUsdgTransferRequest({
+            to: vault.vaultAddress as `0x${string}`,
+            amount: basketPlan.passthroughWei,
+          });
+
+          lastTxHash = await writeContractAsync({
+            ...transferReq,
+            chainId: ROBINHOOD_CHAIN_ID,
+          });
+        }
+      } else {
+        // No refund recipient: SwapRouter02's refundETH always pays msg.sender,
+        // which is the grantor signing this transaction.
+        const request = buildBasketDepositRequest({
+          plan: basketPlan,
+          recipient: vault.vaultAddress as `0x${string}`,
+        });
+
+        lastTxHash = await writeContractAsync({
+          ...request,
+          chainId: ROBINHOOD_CHAIN_ID,
+        });
+      }
+
+      if (lastTxHash) {
+        setDepositTxHash(lastTxHash);
+        setDialog("deposit_pending");
+      }
     } catch (e) {
       const err = e as { shortMessage?: string; message?: string };
       setError(err.shortMessage || err.message || t.vault.errors.txFailed);
@@ -439,6 +545,8 @@ export function VaultView() {
     if (depositReceipt && dialog === "deposit_pending") {
       setDialog("deposit_success");
       setDepositAmount("");
+      refetchUsdgBalance();
+      refetchUsdgAllowance();
       // Trigger fund verification after a short delay
       setTimeout(() => {
         verifyFunding(realTrust!.trust.id).catch(() => {});
@@ -1302,8 +1410,46 @@ export function VaultView() {
             ) : (
               <>
                 <p className="text-sm" style={{ color: "var(--ink)", marginBottom: "1rem" }}>
-                  {t.vault.deposit.basketIntro}
+                  {basketInputAsset === "USDG"
+                    ? t.vault.deposit.basketIntroUsdg
+                    : t.vault.deposit.basketIntro}
                 </p>
+
+                <div className="deposit-field">
+                  <label className="deposit-label">
+                    {t.vault.deposit.inputAssetLabel}
+                  </label>
+                  <div
+                    className="deposit-currency-options"
+                    role="group"
+                    aria-label={t.vault.deposit.inputAssetLabel}
+                  >
+                    <button
+                      type="button"
+                      aria-pressed={basketInputAsset === "ETH"}
+                      className={basketInputAsset === "ETH" ? "is-active" : ""}
+                      onClick={() => {
+                        setBasketInputAsset("ETH");
+                        setDepositAmount("");
+                      }}
+                    >
+                      <AssetIcon symbol="ETH" className="w-4 h-4" />
+                      {t.vault.deposit.inputAssetEth}
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={basketInputAsset === "USDG"}
+                      className={basketInputAsset === "USDG" ? "is-active" : ""}
+                      onClick={() => {
+                        setBasketInputAsset("USDG");
+                        setDepositAmount("");
+                      }}
+                    >
+                      <AssetIcon symbol="USDG" className="w-4 h-4" />
+                      {t.vault.deposit.inputAssetUsdg}
+                    </button>
+                  </div>
+                </div>
 
                 {routerStatus && !routerStatus.available && (
                   <div className="deposit-router-warning" role="status">
@@ -1333,26 +1479,49 @@ export function VaultView() {
                     <label className="deposit-label" htmlFor="basket-amount">
                       {t.vault.deposit.basketAmountLabel}
                     </label>
-                    {nativeBalance !== undefined && (
-                      <span className="deposit-balance">
-                        {t.vault.deposit.basketBalance}{" "}
-                        <strong>
-                          {Number(formatEther(nativeBalance.value)).toLocaleString(
-                            undefined,
-                            { maximumFractionDigits: 5 },
+                    {basketInputAsset === "USDG" ? (
+                      usdgBalanceRaw !== undefined && (
+                        <span className="deposit-balance">
+                          {t.vault.deposit.basketBalance}{" "}
+                          <strong>
+                            {Number(usdgBalance).toLocaleString(undefined, {
+                              maximumFractionDigits: 2,
+                            })}
+                          </strong>{" "}
+                          USDG
+                          {Number(usdgBalance) > 0 && (
+                            <button
+                              type="button"
+                              className="deposit-max"
+                              onClick={() => setDepositAmount(usdgBalance)}
+                            >
+                              {t.vault.deposit.max}
+                            </button>
                           )}
-                        </strong>{" "}
-                        ETH
-                        {Number(maxBasketEth) > 0 && (
-                          <button
-                            type="button"
-                            className="deposit-max"
-                            onClick={() => setDepositAmount(maxBasketEth)}
-                          >
-                            {t.vault.deposit.max}
-                          </button>
-                        )}
-                      </span>
+                        </span>
+                      )
+                    ) : (
+                      nativeBalance !== undefined && (
+                        <span className="deposit-balance">
+                          {t.vault.deposit.basketBalance}{" "}
+                          <strong>
+                            {Number(formatEther(nativeBalance.value)).toLocaleString(
+                              undefined,
+                              { maximumFractionDigits: 5 },
+                            )}
+                          </strong>{" "}
+                          ETH
+                          {Number(maxBasketEth) > 0 && (
+                            <button
+                              type="button"
+                              className="deposit-max"
+                              onClick={() => setDepositAmount(maxBasketEth)}
+                            >
+                              {t.vault.deposit.max}
+                            </button>
+                          )}
+                        </span>
+                      )
                     )}
                   </div>
                   <input
@@ -1361,7 +1530,11 @@ export function VaultView() {
                     type="number"
                     min="0"
                     step="any"
-                    placeholder={t.vault.deposit.basketAmountPlaceholder}
+                    placeholder={
+                      basketInputAsset === "USDG"
+                        ? "e.g. 500"
+                        : t.vault.deposit.basketAmountPlaceholder
+                    }
                     value={depositAmount}
                     onChange={(e) => setDepositAmount(e.target.value)}
                   />
@@ -1423,10 +1596,15 @@ export function VaultView() {
                             </td>
                             <td>{leg.bps / 100}%</td>
                             <td>
-                              {Number(formatEther(leg.amountIn)).toLocaleString(
-                                undefined,
-                                { maximumFractionDigits: 6 },
-                              )}
+                              {basketInputAsset === "USDG"
+                                ? `${Number(formatUnits(leg.amountIn, 6)).toLocaleString(
+                                    undefined,
+                                    { maximumFractionDigits: 2 },
+                                  )} USDG`
+                                : `${Number(formatEther(leg.amountIn)).toLocaleString(
+                                    undefined,
+                                    { maximumFractionDigits: 6 },
+                                  )} ETH`}
                             </td>
                             <td>
                               {leg.route === "passthrough" ? (
@@ -1455,11 +1633,15 @@ export function VaultView() {
                           <td>{t.vault.deposit.basketTotal}</td>
                           <td>100%</td>
                           <td colSpan={2}>
-                            {Number(formatEther(basketPlan.totalWei)).toLocaleString(
-                              undefined,
-                              { maximumFractionDigits: 6 },
-                            )}{" "}
-                            ETH
+                            {basketInputAsset === "USDG"
+                              ? `${Number(formatUnits(basketPlan.totalWei, 6)).toLocaleString(
+                                  undefined,
+                                  { maximumFractionDigits: 2 },
+                                )} USDG`
+                              : `${Number(formatEther(basketPlan.totalWei)).toLocaleString(
+                                  undefined,
+                                  { maximumFractionDigits: 6 },
+                                )} ETH`}
                           </td>
                         </tr>
                       </tfoot>
@@ -1498,12 +1680,40 @@ export function VaultView() {
                     </>
                   )}
                 </button>
+              ) : basketInputAsset === "USDG" &&
+                basketPlan !== null &&
+                basketPlan.error === "" &&
+                basketPlan.routedWei > 0n &&
+                usdgAllowance < basketPlan.routedWei ? (
+                <button
+                  className="button primary"
+                  onClick={handleApproveUsdg}
+                  disabled={
+                    busy ||
+                    approvingUsdg ||
+                    quoting ||
+                    !depositAmount ||
+                    !routerStatus?.available ||
+                    !basketPlan ||
+                    basketPlan.error !== "" ||
+                    !basketPlan.fullyQuoted
+                  }
+                >
+                  {approvingUsdg ? (
+                    t.vault.deposit.approvingUsdg
+                  ) : (
+                    <>
+                      <Check size={14} /> {t.vault.deposit.approveUsdg}
+                    </>
+                  )}
+                </button>
               ) : (
                 <button
                   className="button primary"
                   onClick={handleBasketDeposit}
                   disabled={
                     busy ||
+                    approvingUsdg ||
                     quoting ||
                     !depositAmount ||
                     !routerStatus?.available ||
@@ -1563,7 +1773,7 @@ export function VaultView() {
               </div>
               <p className="text-sm" style={{ color: "var(--ink)", textAlign: "center", marginBottom: "0.75rem" }}>
                 {t.vault.deposit.successBodyPrefix}{" "}
-                <strong>{depositAsset}</strong>{" "}
+                <strong>{depositMode === "basket" ? basketInputAsset : depositAsset}</strong>{" "}
                 {t.vault.deposit.successBodySuffix}
               </p>
               {depositTxHash && (

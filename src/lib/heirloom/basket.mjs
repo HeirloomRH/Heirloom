@@ -129,9 +129,13 @@ export function planBasketDeposit({
       amountIn,
       route,
       // A passthrough moves the input asset itself, so out === in.
-      quotedOut: route === ROUTE_PASSTHROUGH ? amountIn : quotedOut,
+      // If a leg falls back to the input currency, it also retains out === in without pool execution.
+      quotedOut:
+        route === ROUTE_PASSTHROUGH || (route === ROUTE_FALLBACK && fallbackSymbol === inputSymbol)
+          ? amountIn
+          : quotedOut,
       minOut:
-        route === ROUTE_PASSTHROUGH
+        route === ROUTE_PASSTHROUGH || (route === ROUTE_FALLBACK && fallbackSymbol === inputSymbol)
           ? amountIn
           : quotedOut === null
             ? null
@@ -183,7 +187,11 @@ export function planBasketDeposit({
   }
 
   const passthrough = planned
-    .filter((leg) => leg.route === ROUTE_PASSTHROUGH)
+    .filter(
+      (leg) =>
+        leg.route === ROUTE_PASSTHROUGH ||
+        (leg.route === ROUTE_FALLBACK && leg.fallbackSymbol === inputSymbol),
+    )
     .reduce((sum, leg) => sum + leg.amountIn, 0n);
 
   return {
