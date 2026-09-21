@@ -11,6 +11,7 @@ export const vault = {
   forPrefix: (name: string) => `FOR ${name}`,
   status: {
     successionTriggered: "Succession Triggered",
+    inGracePeriod: "28-Day Grace Period",
     activeFunded: "Active & Funded",
     pendingFunding: "Pending Funding",
   },
@@ -96,6 +97,8 @@ export const vault = {
     title: "Dead-Man's Switch",
     daysRemaining: "days remaining",
     missed: "Heartbeat window missed. Succession plan is now active for the beneficiary.",
+    gracePeriod: (days: number) =>
+      `Safety grace period active: ${days} days remaining to check in before succession unlocks for the beneficiary.`,
     window: (days: number) =>
       `Window: ${days} days. If a check-in is missed, succession executes automatically.`,
     signing: "Signing...",

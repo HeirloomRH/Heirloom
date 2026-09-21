@@ -930,9 +930,29 @@ export function VaultView() {
     daysRemaining = Math.max(0, Math.ceil(diffMs / 86400000));
   }
 
+  const gracePeriodDeadline = realTrust?.trust.gracePeriodDeadline
+    ? new Date(realTrust.trust.gracePeriodDeadline)
+    : null;
+
+  let graceDaysRemaining = 0;
+  if (gracePeriodDeadline) {
+    const diffMs = gracePeriodDeadline.getTime() - Date.now();
+    graceDaysRemaining = Math.max(0, Math.ceil(diffMs / 86400000));
+  }
+
+  const isInGracePeriod =
+    realTrust?.trust.status === "in_grace_period" ||
+    Boolean(
+      vault.heartbeatDeadline &&
+        new Date() > new Date(vault.heartbeatDeadline) &&
+        gracePeriodDeadline &&
+        new Date() <= gracePeriodDeadline
+    );
+
   const isSuccessionTriggered =
     realTrust?.trust.status === "succession_triggered" ||
-    (vault.heartbeatDeadline && new Date() > new Date(vault.heartbeatDeadline));
+    Boolean(gracePeriodDeadline && new Date() > gracePeriodDeadline) ||
+    Boolean(!isInGracePeriod && vault.heartbeatDeadline && new Date() > new Date(vault.heartbeatDeadline) && !gracePeriodDeadline);
 
   const isGrantor = address && realTrust && address.toLowerCase() === realTrust.trust.grantorAddress.toLowerCase();
   const isBeneficiary = address && realTrust && address.toLowerCase() === realTrust.trust.beneficiaryAddress.toLowerCase();
@@ -960,16 +980,20 @@ export function VaultView() {
               className={`vault-status ${
                 isSuccessionTriggered
                   ? "bg-rose-950/80 text-rose-300 border-rose-800"
-                  : vault.corpusFunded
-                    ? "bg-emerald-950/80 text-emerald-300 border-emerald-800"
-                    : "bg-amber-950/80 text-amber-300 border-amber-800"
+                  : isInGracePeriod
+                    ? "bg-amber-950/80 text-amber-300 border-amber-800 animate-pulse"
+                    : vault.corpusFunded
+                      ? "bg-emerald-950/80 text-emerald-300 border-emerald-800"
+                      : "bg-amber-950/80 text-amber-300 border-amber-800"
               }`}
             >
               {isSuccessionTriggered
                 ? t.vault.status.successionTriggered
-                : vault.corpusFunded
-                  ? t.vault.status.activeFunded
-                  : t.vault.status.pendingFunding}
+                : isInGracePeriod
+                  ? t.vault.status.inGracePeriod
+                  : vault.corpusFunded
+                    ? t.vault.status.activeFunded
+                    : t.vault.status.pendingFunding}
             </span>
           </div>
           <h1 className="product-title">{vault.name}</h1>
@@ -1430,19 +1454,34 @@ export function VaultView() {
               <Heart size={17} className={isSuccessionTriggered ? "text-rose-500" : "text-emerald-400"} />
             </div>
 
-            <strong>
-              {daysRemaining} <span>{t.vault.heartbeat.daysRemaining}</span>
-            </strong>
-
-            <p className="text-xs text-[#8d7c68]">
-              {isSuccessionTriggered ? (
-                <span className="text-rose-400 font-medium">
+            {isInGracePeriod ? (
+              <>
+                <strong className="text-amber-400">
+                  {graceDaysRemaining} <span>{t.vault.heartbeat.daysRemaining}</span>
+                </strong>
+                <p className="text-xs text-amber-400 font-medium leading-relaxed">
+                  {t.vault.heartbeat.gracePeriod(graceDaysRemaining)}
+                </p>
+              </>
+            ) : isSuccessionTriggered ? (
+              <>
+                <strong>
+                  0 <span>{t.vault.heartbeat.daysRemaining}</span>
+                </strong>
+                <p className="text-xs text-rose-400 font-medium">
                   {t.vault.heartbeat.missed}
-                </span>
-              ) : (
-                <>{t.vault.heartbeat.window(vault.heartbeat)}</>
-              )}
-            </p>
+                </p>
+              </>
+            ) : (
+              <>
+                <strong>
+                  {daysRemaining} <span>{t.vault.heartbeat.daysRemaining}</span>
+                </strong>
+                <p className="text-xs text-[#8d7c68]">
+                  {t.vault.heartbeat.window(vault.heartbeat)}
+                </p>
+              </>
+            )}
 
             {isGrantor && !isSuccessionTriggered && (
               <button

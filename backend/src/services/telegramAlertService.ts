@@ -145,3 +145,35 @@ export async function sendSuccessionAlert(
     parse_mode: "HTML",
   });
 }
+
+/**
+ * Send an urgent notification when a trust enters the 28-day safety grace period
+ */
+export async function sendGracePeriodAlert(
+  chatId: number,
+  trustId: string,
+  trustName: string,
+  graceDeadline: Date
+): Promise<void> {
+  if (!isBotConfigured()) return;
+
+  const deadlineStr = graceDeadline.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+  const miniAppUrl = config.frontendUrl;
+
+  await sendMessage({
+    chat_id: chatId,
+    text:
+      `⚠️ <b>SAFETY GRACE PERIOD ACTIVATED (28 Days)</b>\n\n` +
+      `Your trust <b>${escapeHtml(trustName)}</b> missed its standard check-in deadline.\n\n` +
+      `🛡️ <i>Your vault assets remain locked.</i> The beneficiary cannot claim yet.\n\n` +
+      `You have until <b>${deadlineStr}</b> to submit your vitality check-in before succession triggers.\n\n` +
+      `Tap below to check in right now and restore your trust to active status:`,
+    parse_mode: "HTML",
+    reply_markup: buildCheckinKeyboard(trustId, miniAppUrl),
+  });
+}

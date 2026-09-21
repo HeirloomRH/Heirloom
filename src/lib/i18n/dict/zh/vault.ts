@@ -13,6 +13,7 @@ export const vault: typeof EnVault = {
   forPrefix: (name: string) => `受益人：${name}`,
   status: {
     successionTriggered: "已触发继承",
+    inGracePeriod: "28天安全宽限期",
     activeFunded: "活跃且已注资",
     pendingFunding: "待注资",
   },
@@ -98,6 +99,8 @@ export const vault: typeof EnVault = {
     title: "失联开关",
     daysRemaining: "天后到期",
     missed: "已错过心跳窗口。继承方案现已对受益人生效。",
+    gracePeriod: (days: number) =>
+      `安全宽限期生效中：还剩 ${days} 天可签到，之后受益人将可解锁继承。`,
     window: (days: number) => `窗口期：${days} 天。若错过签到，继承程序将自动执行。`,
     signing: "签名中…",
     checkIn: "签到（免 Gas）",
