@@ -20,6 +20,10 @@ export const config = {
   relayerPrivateKey: process.env.RELAYER_PRIVATE_KEY || process.env.OPERATOR_PRIVATE_KEY || "",
   operatorPrivateKey: process.env.OPERATOR_PRIVATE_KEY || "",
 
+  // Telegram Bot
+  telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || "",
+  telegramBotUsername: (process.env.TELEGRAM_BOT_USERNAME || "@HeirloomRHBot").replace(/^@/, ""),
+
   // Frontend Origin for CORS
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:5173",
 };

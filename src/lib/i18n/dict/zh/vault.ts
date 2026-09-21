@@ -252,6 +252,24 @@ export const vault: typeof EnVault = {
     depositVerified: "本金存入已在 Robinhood Chain 上验证通过！",
   },
 
+  telegram: {
+    title: "Telegram 停机开关警报",
+    desc: "在心跳截止日期前接收私密倒计时提醒（30天、14天、7天、24小时），并在 Telegram 中一键完成签到。",
+    connectButton: "连接 @HeirloomRHBot",
+    connecting: "正在生成配对链接……",
+    connected: "警报已激活 (@HeirloomRHBot)",
+    disconnectButton: "断开连接",
+    disconnecting: "正在断开……",
+    modalTitle: "连接 Telegram 警报",
+    modalDesc: "点击下方按钮在 Telegram 中打开并配对您的信托与 @HeirloomRHBot。配对链接将在 1 小时内有效。",
+    openBot: "在 Telegram 中打开",
+    copyLink: "复制链接",
+    copied: "链接已复制！",
+    close: "关闭",
+    checkinBannerTitle: "Telegram 心跳签到",
+    checkinBannerDesc: "您通过 @HeirloomRHBot 的警报打开了此金库。请在下方签名以重置 90 天心跳窗口。",
+  },
+
   beneficiaryFallback: "受益人",
   tokenSuffix: " 代币",
 };

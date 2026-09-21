@@ -259,6 +259,24 @@ export const vault = {
     depositVerified: "Corpus deposit verified on Robinhood Chain!",
   },
 
+  telegram: {
+    title: "Telegram Dead-Man's Switch Alerts",
+    desc: "Receive private countdown notifications (30d, 14d, 7d, 24h) and check in with one tap from Telegram.",
+    connectButton: "Connect @HeirloomRHBot",
+    connecting: "Generating pairing link…",
+    connected: "Alerts Active (@HeirloomRHBot)",
+    disconnectButton: "Disconnect",
+    disconnecting: "Disconnecting…",
+    modalTitle: "Connect Telegram Alerts",
+    modalDesc: "Tap below to open Telegram and pair your trust with @HeirloomRHBot. Your pairing link expires in 1 hour.",
+    openBot: "Open in Telegram",
+    copyLink: "Copy Link",
+    copied: "Link copied!",
+    close: "Close",
+    checkinBannerTitle: "Telegram Heartbeat Check-In",
+    checkinBannerDesc: "You opened this vault from an alert in @HeirloomRHBot. Sign below to extend your 90-day window.",
+  },
+
   beneficiaryFallback: "Beneficiary",
   tokenSuffix: " Token",
 };

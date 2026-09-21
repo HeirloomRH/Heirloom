@@ -4,6 +4,7 @@ import { requestLogger } from "./middleware/requestLogger.js";
 import { healthRouter } from "./routes/health.js";
 import { tokensRouter } from "./routes/tokens.js";
 import { trustsRouter } from "./routes/trusts.js";
+import { telegramRouter } from "./routes/telegram.js";
 
 export const app = express();
 
@@ -21,6 +22,10 @@ app.use("/tokens", tokensRouter);
 // Trust lifecycle & vault routes
 app.use("/api/trusts", trustsRouter);
 app.use("/trusts", trustsRouter);
+
+// Telegram Bot Webhook & Integration routes
+app.use("/api/telegram", telegramRouter);
+app.use("/telegram", telegramRouter);
 
 // Root informational endpoint
 app.get("/", (_req, res) => {

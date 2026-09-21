@@ -16,6 +16,7 @@ import {
   parseTokenUnits,
   rhcClient,
 } from "../lib/robinhoodTokens.js";
+import crypto from "node:crypto";
 import { config } from "../config.js";
 import { getAddress, isAddress } from "viem";
 import {
@@ -23,6 +24,8 @@ import {
   executeSealedBasketDeposit,
   type SealedDepositPayload,
 } from "../services/sealedDepositService.js";
+import { buildStartLink } from "../lib/telegram.js";
+import { sendCheckinConfirmation } from "../services/telegramAlertService.js";
 
 export const trustsRouter = Router();
 
@@ -277,6 +280,8 @@ trustsRouter.get("/:id", async (req: Request, res: Response) => {
         lastHeartbeatAt: trust.last_heartbeat_at,
         heartbeatDeadline: trust.heartbeat_deadline,
         hasEncryptedLetter: Boolean(trust.encrypted_letter),
+        telegramLinked: Boolean(trust.telegram_chat_id),
+        telegramAlertsEnabled: Boolean(trust.telegram_alerts_enabled),
         createdAt: trust.created_at,
         updatedAt: trust.updated_at,
       },
@@ -494,18 +499,33 @@ trustsRouter.post("/:id/heartbeat", async (req: Request, res: Response) => {
        SET last_heartbeat_at = NOW(),
            heartbeat_deadline = $1,
            status = CASE WHEN status = 'succession_triggered' THEN 'active' ELSE status END,
+           telegram_alert_sent_30d = FALSE,
+           telegram_alert_sent_14d = FALSE,
+           telegram_alert_sent_7d = FALSE,
+           telegram_alert_sent_24h = FALSE,
            updated_at = NOW()
        WHERE id = $2
-       RETURNING last_heartbeat_at, heartbeat_deadline, status`,
+       RETURNING last_heartbeat_at, heartbeat_deadline, status, telegram_chat_id, name`,
       [newDeadline, id]
     );
+
+    const updatedRow = updateRes.rows[0];
+    if (updatedRow?.telegram_chat_id) {
+      sendCheckinConfirmation(
+        updatedRow.telegram_chat_id,
+        updatedRow.name || trust.name,
+        newDeadline
+      ).catch((err) =>
+        console.error("[Telegram] Error sending check-in confirmation:", err)
+      );
+    }
 
     res.json({
       success: true,
       message: "Heartbeat check-in confirmed. Dead-man's switch extended.",
-      status: updateRes.rows[0].status,
-      lastHeartbeatAt: updateRes.rows[0].last_heartbeat_at,
-      heartbeatDeadline: updateRes.rows[0].heartbeat_deadline,
+      status: updatedRow.status,
+      lastHeartbeatAt: updatedRow.last_heartbeat_at,
+      heartbeatDeadline: updatedRow.heartbeat_deadline,
     });
   } catch (err: any) {
     console.error("Error submitting heartbeat:", err);
@@ -777,3 +797,91 @@ trustsRouter.post("/:id/sealed-deposit", async (req: Request, res: Response) => 
     });
   }
 });
+
+/**
+ * POST /api/trusts/:id/telegram-link
+ * Generates a one-time pairing token and Telegram bot deep-link for this trust
+ */
+trustsRouter.post("/:id/telegram-link", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { grantorAddress } = req.body || {};
+
+    const trustRes = await query("SELECT * FROM trusts WHERE id = $1", [id]);
+    if (trustRes.rows.length === 0) {
+      res.status(404).json({ error: "Trust not found" });
+      return;
+    }
+
+    const trust = trustRes.rows[0];
+    if (
+      grantorAddress &&
+      trust.grantor_address.toLowerCase() !== grantorAddress.toLowerCase()
+    ) {
+      res.status(403).json({ error: "Only the grantor can connect Telegram alerts" });
+      return;
+    }
+
+    // Generate secure 48-hex-char token
+    const token = crypto.randomBytes(24).toString("hex");
+
+    await query(
+      `UPDATE trusts
+       SET telegram_pairing_token = $1,
+           telegram_pairing_expires_at = NOW() + INTERVAL '1 hour',
+           updated_at = NOW()
+       WHERE id = $2`,
+      [token, id]
+    );
+
+    const startLink = buildStartLink(token);
+
+    res.json({
+      success: true,
+      pairingToken: token,
+      startLink,
+      botUsername: config.telegramBotUsername,
+      expiresInSeconds: 3600,
+    });
+  } catch (err: any) {
+    console.error("Error generating Telegram pairing token:", err);
+    res.status(500).json({ error: "Failed to generate pairing token", details: err.message });
+  }
+});
+
+/**
+ * DELETE /api/trusts/:id/telegram-link
+ * Unlinks Telegram notifications from this trust
+ */
+trustsRouter.delete("/:id/telegram-link", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const result = await query(
+      `UPDATE trusts
+       SET telegram_chat_id = NULL,
+           telegram_alerts_enabled = FALSE,
+           telegram_pairing_token = NULL,
+           telegram_pairing_expires_at = NULL,
+           telegram_linked_at = NULL,
+           updated_at = NOW()
+       WHERE id = $1
+       RETURNING id, name`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: "Trust not found" });
+      return;
+    }
+
+    res.json({
+      success: true,
+      message: "Telegram disconnected from trust",
+    });
+  } catch (err: any) {
+    console.error("Error unlinking Telegram:", err);
+    res.status(500).json({ error: "Failed to unlink Telegram", details: err.message });
+  }
+});
+

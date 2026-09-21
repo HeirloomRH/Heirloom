@@ -26,6 +26,7 @@ import {
   Split,
   EyeOff,
   Shield,
+  Send,
 } from "lucide-react";
 import { useAccount, useSignTypedData, useWriteContract, useWaitForTransactionReceipt, useReadContract, useBalance, usePublicClient } from "wagmi";
 import { parseUnits, parseEther, formatUnits, formatEther, erc20Abi } from "viem";
@@ -37,8 +38,11 @@ import {
   fetchLetter,
   fetchRelayerInfo,
   submitSealedDeposit,
+  createTelegramPairing,
+  unlinkTelegram,
   type TrustResponse,
   type RelayerInfoResponse,
+  type TelegramPairingResponse,
 } from "@/lib/api";
 import { ROBINHOOD_CHAIN_ID, ROBINHOOD_EXPLORER_URL } from "@/lib/chain";
 import { DemoNotice, Dialog } from "./product";
@@ -156,6 +160,23 @@ export function VaultView() {
   const [relayerInfo, setRelayerInfo] = useState<RelayerInfoResponse | null>(null);
   const [approvingPermit2, setApprovingPermit2] = useState(false);
   const [isRelaying, setIsRelaying] = useState(false);
+
+  // --- Telegram Bot Integration ---
+  const [telegramPairing, setTelegramPairing] = useState<TelegramPairingResponse | null>(null);
+  const [pairingLoading, setPairingLoading] = useState(false);
+  const [unlinkingTelegram, setUnlinkingTelegram] = useState(false);
+  const [showTelegramModal, setShowTelegramModal] = useState(false);
+  const [telegramCopied, setTelegramCopied] = useState(false);
+  const [openedFromTelegram, setOpenedFromTelegram] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("checkin") === "1") {
+        setOpenedFromTelegram(true);
+      }
+    }
+  }, []);
 
   const publicClient = usePublicClient({ chainId: ROBINHOOD_CHAIN_ID });
 
@@ -759,6 +780,38 @@ export function VaultView() {
     }
   };
 
+  // Connect Telegram alerts via @HeirloomRHBot
+  const handleConnectTelegram = async () => {
+    if (!realTrust) return;
+    setPairingLoading(true);
+    setError("");
+    try {
+      const res = await createTelegramPairing(realTrust.trust.id, address);
+      setTelegramPairing(res);
+      setShowTelegramModal(true);
+    } catch (e: any) {
+      setError(e?.message || "Failed to generate Telegram pairing link");
+    } finally {
+      setPairingLoading(false);
+    }
+  };
+
+  // Disconnect Telegram alerts
+  const handleUnlinkTelegram = async () => {
+    if (!realTrust) return;
+    setUnlinkingTelegram(true);
+    setError("");
+    try {
+      await unlinkTelegram(realTrust.trust.id);
+      setNotice(t.vault.telegram.disconnectButton);
+      await loadData();
+    } catch (e: any) {
+      setError(e?.message || "Failed to disconnect Telegram");
+    } finally {
+      setUnlinkingTelegram(false);
+    }
+  };
+
   // On-Chain Funding Verification
   const handleVerifyDeposit = async () => {
     if (!realTrust) return;
@@ -970,6 +1023,29 @@ export function VaultView() {
               {t.vault.addressCard.activateBody}
             </div>
           )}
+        </div>
+      )}
+
+      {openedFromTelegram && (
+        <div className="mb-4 p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-800/60 flex items-start justify-between gap-3 text-sm text-emerald-300">
+          <div className="flex items-start gap-2.5">
+            <Heart size={18} className="text-emerald-400 mt-0.5 shrink-0" />
+            <div>
+              <strong className="block text-emerald-200 font-semibold mb-0.5">
+                {t.vault.telegram.checkinBannerTitle}
+              </strong>
+              <span className="text-xs text-emerald-300/90">
+                {t.vault.telegram.checkinBannerDesc}
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="text-emerald-400 hover:text-emerald-200 text-xs px-1.5 py-0.5"
+            onClick={() => setOpenedFromTelegram(false)}
+          >
+            ✕
+          </button>
         </div>
       )}
 
@@ -1349,6 +1425,50 @@ export function VaultView() {
                 {busy ? t.vault.heartbeat.signing : t.vault.heartbeat.checkIn}
               </button>
             )}
+
+            {/* Telegram Bot Alerts Integration */}
+            {isGrantor && !isSuccessionTriggered && (
+              <div className="mt-3 pt-3 border-t border-[#332b24]">
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <span className="text-xs font-semibold text-[#e8e0d4] flex items-center gap-1.5">
+                    <Send size={12} className="text-[#2AABEE]" />
+                    {t.vault.telegram.title}
+                  </span>
+                  {realTrust?.trust.telegramLinked && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-950/70 text-emerald-400 border border-emerald-800/60 font-mono">
+                      ACTIVE
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-[#8d7c68] leading-tight mb-2">
+                  {t.vault.telegram.desc}
+                </p>
+                {realTrust?.trust.telegramLinked ? (
+                  <button
+                    type="button"
+                    className="button secondary text-xs w-full py-1.5 justify-center"
+                    onClick={handleUnlinkTelegram}
+                    disabled={unlinkingTelegram}
+                  >
+                    {unlinkingTelegram
+                      ? t.vault.telegram.disconnecting
+                      : t.vault.telegram.disconnectButton}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="button secondary text-xs w-full py-1.5 justify-center text-[#2AABEE] border-[#2AABEE]/40 hover:border-[#2AABEE]"
+                    onClick={handleConnectTelegram}
+                    disabled={pairingLoading}
+                  >
+                    <Send size={12} />
+                    {pairingLoading
+                      ? t.vault.telegram.connecting
+                      : t.vault.telegram.connectButton}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Connected Wallet Info */}
@@ -1394,6 +1514,52 @@ export function VaultView() {
           </div>
         </aside>
       </div>
+
+      {/* Telegram Pairing Modal */}
+      {showTelegramModal && telegramPairing && (
+        <Dialog
+          title={t.vault.telegram.modalTitle}
+          onClose={() => setShowTelegramModal(false)}
+        >
+          <div className="dialog-body space-y-4">
+            <p className="text-sm leading-relaxed" style={{ color: "var(--ink)" }}>
+              {t.vault.telegram.modalDesc}
+            </p>
+
+            <div className="p-3 rounded-lg border border-[#332b24] bg-[#1a1613] space-y-1">
+              <span className="text-[11px] text-[#8d7c68] block">Telegram Bot</span>
+              <strong className="text-sm text-[#2AABEE] block font-mono">
+                @{telegramPairing.botUsername}
+              </strong>
+            </div>
+
+            <div className="flex flex-col gap-2 pt-2">
+              <a
+                href={telegramPairing.startLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="button primary w-full justify-center gap-2"
+                style={{ backgroundColor: "#2AABEE", borderColor: "#2AABEE", color: "#fff" }}
+              >
+                <Send size={14} />
+                {t.vault.telegram.openBot}
+              </a>
+
+              <button
+                type="button"
+                className="button secondary w-full justify-center text-xs"
+                onClick={() => {
+                  navigator.clipboard.writeText(telegramPairing.startLink);
+                  setTelegramCopied(true);
+                  setTimeout(() => setTelegramCopied(false), 2000);
+                }}
+              >
+                {telegramCopied ? t.vault.telegram.copied : t.vault.telegram.copyLink}
+              </button>
+            </div>
+          </div>
+        </Dialog>
+      )}
 
       {/* Decrypted Letter Dialog */}
       {dialog === "letter" && unlockedLetter && (

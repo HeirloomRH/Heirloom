@@ -78,6 +78,8 @@ export interface TrustDetail {
   lastHeartbeatAt: string;
   heartbeatDeadline: string;
   hasEncryptedLetter: boolean;
+  telegramLinked?: boolean;
+  telegramAlertsEnabled?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -329,6 +331,49 @@ export async function submitSealedDeposit(
   const data = await res.json();
   if (!res.ok) {
     throw new Error(data.details || data.error || "Sealed basket deposit failed");
+  }
+  return data;
+}
+
+export interface TelegramPairingResponse {
+  success: boolean;
+  pairingToken: string;
+  startLink: string;
+  botUsername: string;
+  expiresInSeconds: number;
+}
+
+/**
+ * Generate a one-time Telegram pairing token and deep-link for this trust
+ */
+export async function createTelegramPairing(
+  trustId: string,
+  grantorAddress?: string
+): Promise<TelegramPairingResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/trusts/${trustId}/telegram-link`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ grantorAddress }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to generate Telegram pairing link");
+  }
+  return data;
+}
+
+/**
+ * Disconnect Telegram alerts from this trust
+ */
+export async function unlinkTelegram(trustId: string): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_BASE_URL}/api/trusts/${trustId}/telegram-link`, {
+    method: "DELETE",
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to disconnect Telegram");
   }
   return data;
 }
