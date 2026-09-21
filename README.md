@@ -1,6 +1,6 @@
 # HEIRLOOM ($HEIR)
 
-[![CI](https://github.com/notadeveloper7/heirloom/actions/workflows/backend.yml/badge.svg)](https://github.com/notadeveloper7/heirloom/actions/workflows/backend.yml)
+[![CI](https://github.com/HeirloomRH/Heirloom/actions/workflows/backend.yml/badge.svg)](https://github.com/HeirloomRH/Heirloom/actions/workflows/backend.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)
 ![Bun](https://img.shields.io/badge/Bun-1.x-000000?logo=bun&logoColor=white)
