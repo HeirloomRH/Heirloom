@@ -1,99 +1,107 @@
-import assert from "node:assert";
-import { test } from "node:test";
+import { describe, it, expect } from "bun:test";
+import request from "../backend/node_modules/supertest/index.js";
 
-const BASE_URL = "http://localhost:3001";
+try {
+  process.loadEnvFile("./backend/.env");
+} catch {}
 
-test("Heirloom Privacy API Endpoints & Zero-Knowledge Integration", async (t) => {
-  await t.test("1. GET / - Informational root endpoint returns privacy status", async () => {
-    const res = await fetch(`${BASE_URL}/`);
-    assert.strictEqual(res.status, 200);
-    const data = await res.json();
-    assert.strictEqual(data.name, "Heirloom API");
-    assert.ok(data.privacy);
-    assert.strictEqual(data.privacy.h0OnChainTrust, "live");
+const { app } = await import("../backend/src/app.js");
+const { pool } = await import("../backend/src/db/index.js");
+
+let dbAvailable = false;
+if (process.env.DATABASE_URL) {
+  try {
+    const client = await Promise.race([
+      pool.connect(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Database connection timeout")), 2000)
+      ),
+    ]);
+    await client.query("SELECT 1");
+    client.release();
+    dbAvailable = true;
+  } catch {
+    dbAvailable = false;
+  }
+}
+
+describe("Heirloom Privacy API Endpoints & Zero-Knowledge Integration", () => {
+  it("1. GET / - Informational root endpoint returns privacy status", async () => {
+    const res = await request(app).get("/");
+    expect(res.status).toBe(200);
+    expect(res.body.name).toBe("Heirloom API");
+    expect(res.body.privacy).toBeDefined();
+    expect(res.body.privacy.h0OnChainTrust).toBe("live");
+  });
+});
+
+describe.skipIf(!dbAvailable)("Heirloom Privacy DB Endpoints", () => {
+  it("2. GET /api/sets/meter - Anonymity set size meter", async () => {
+    const res = await request(app).get("/api/sets/meter");
+    expect(res.status).toBe(200);
+    expect(res.body.anonymitySetSize).toBeGreaterThanOrEqual(1);
+    expect(res.body.anonymitySetPool).toBe("rhc_mainnet_pool_v1");
   });
 
-  await t.test("2. GET /api/sets/meter - Anonymity set size meter", async () => {
-    const res = await fetch(`${BASE_URL}/api/sets/meter`);
-    assert.strictEqual(res.status, 200);
-    const data = await res.json();
-    assert.ok(data.anonymitySetSize >= 1);
-    assert.strictEqual(data.anonymitySetPool, "rhc_mainnet_pool_v1");
+  it("3. GET /api/proofs/solvency - Solvency proof status", async () => {
+    const res = await request(app).get("/api/proofs/solvency");
+    expect(res.status).toBe(200);
+    expect(res.body.isSolvent).toBe(true);
+    expect(res.body.latestEpoch).toBeDefined();
   });
 
-  await t.test("3. GET /api/proofs/solvency - Solvency proof status", async () => {
-    const res = await fetch(`${BASE_URL}/api/proofs/solvency`);
-    assert.strictEqual(res.status, 200);
-    const data = await res.json();
-    assert.strictEqual(data.isSolvent, true);
-    assert.ok(data.latestEpoch);
-  });
-
-  await t.test("4. POST /api/private/deposit - Record ZK deposit commitment", async () => {
-    const res = await fetch(`${BASE_URL}/api/private/deposit`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+  it("4. POST /api/private/deposit - Record ZK deposit commitment", async () => {
+    const res = await request(app)
+      .post("/api/private/deposit")
+      .send({
         trustId: "101",
         commitment: `0x_commitment_${Date.now()}`,
         nullifier: `0x_nullifier_${Date.now()}`,
         ciphertext: "0x_encrypted_note_payload",
         blockNumber: 1234567,
-      }),
-    });
-    assert.strictEqual(res.status, 200);
-    const data = await res.json();
-    assert.strictEqual(data.success, true);
-    assert.strictEqual(data.status, "indexed");
+      });
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.status).toBe("indexed");
   });
 
-  await t.test("5. POST /api/attest/provision - Generate proof-of-provision attestation", async () => {
-    const res = await fetch(`${BASE_URL}/api/attest/provision`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+  it("5. POST /api/attest/provision - Generate proof-of-provision attestation", async () => {
+    const res = await request(app)
+      .post("/api/attest/provision")
+      .send({
         trustId: "101",
         thresholdAmount: 50000,
         nonce: "test_nonce_123",
-      }),
-    });
-    assert.strictEqual(res.status, 200);
-    const data = await res.json();
-    assert.strictEqual(data.success, true);
-    assert.ok(data.attestationHash);
+      });
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.attestationHash).toBeDefined();
   });
 
-  await t.test("6. POST /api/disclose/grant & revoke - Scoped disclosure key management", async () => {
-    const grantRes = await fetch(`${BASE_URL}/api/disclose/grant`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+  it("6. POST /api/disclose/grant & revoke - Scoped disclosure key management", async () => {
+    const grantRes = await request(app)
+      .post("/api/disclose/grant")
+      .send({
         trustId: "101",
         granteeAddress: "0x1111111111111111111111111111111111111111",
         cipherKey: "encrypted_key_for_tax_accountant",
-      }),
-    });
-    assert.strictEqual(grantRes.status, 200);
-    const grantData = await grantRes.json();
-    assert.strictEqual(grantData.success, true);
+      });
+    expect(grantRes.status).toBe(200);
+    expect(grantRes.body.success).toBe(true);
 
-    const revokeRes = await fetch(`${BASE_URL}/api/disclose/revoke`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    const revokeRes = await request(app)
+      .post("/api/disclose/revoke")
+      .send({
         trustId: "101",
         granteeAddress: "0x1111111111111111111111111111111111111111",
-      }),
-    });
-    assert.strictEqual(revokeRes.status, 200);
-    const revokeData = await revokeRes.json();
-    assert.strictEqual(revokeData.success, true);
+      });
+    expect(revokeRes.status).toBe(200);
+    expect(revokeRes.body.success).toBe(true);
   });
 
-  await t.test("7. GET /api/migration/status - Custodial beta migration status", async () => {
-    const res = await fetch(`${BASE_URL}/api/migration/status`);
-    assert.strictEqual(res.status, 200);
-    const data = await res.json();
-    assert.ok("totalTrusts" in data);
+  it("7. GET /api/migration/status - Custodial beta migration status", async () => {
+    const res = await request(app).get("/api/migration/status");
+    expect(res.status).toBe(200);
+    expect("totalTrusts" in res.body).toBe(true);
   });
 });
