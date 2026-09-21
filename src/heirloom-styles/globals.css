@@ -2247,6 +2247,42 @@ a svg {
   border-bottom: 1px solid var(--ink);
   padding: 5px 0;
 }
+.lang-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+.lang-toggle > span {
+  opacity: 0.35;
+}
+.lang-toggle button {
+  background: none;
+  border: 0;
+  padding: 2px 1px;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.55;
+  border-bottom: 1px solid transparent;
+  transition: opacity 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+.lang-toggle button:hover {
+  opacity: 1;
+  color: #b5542c;
+}
+.lang-toggle button.active {
+  opacity: 1;
+  font-weight: 500;
+  border-bottom-color: var(--ink);
+}
+.lang-toggle button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
 .menu-toggle.icon-button {
   display: none;
 }
@@ -3557,6 +3593,11 @@ a svg {
   }
   .nav-app {
     border: 0;
+  }
+  .lang-toggle.nav-lang {
+    padding: 13px 5px;
+    border-top: 1px solid var(--line);
+    justify-content: flex-start;
   }
   .hero {
     padding-top: 34px;
