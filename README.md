@@ -7,6 +7,14 @@
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
 ![Robinhood Chain](https://img.shields.io/badge/Robinhood_Chain-4663-00C805?logo=ethereum&logoColor=white)
 
+**$HEIR Contract Address** — Robinhood Chain (4663)
+
+```text
+0xa6e6a94208a481fa73e5083d8e54c01f7a7e04ed
+```
+
+[View on DexScreener](https://dexscreener.com/search?q=0xa6e6a94208a481fa73e5083d8e54c01f7a7e04ed)
+
 > **The on-chain trust fund. Generational wealth, programmable.**
 
 The wealthy don't hand their kids cash — they set up trusts: portfolios that vest on schedules, pay allowances, and survive the person who created them. That machinery traditionally costs lawyers, banks, and five figures a year. **HEIRLOOM** turns this into a five-minute on-chain flow: build a portfolio of real tokenized stocks, seal it in a non-custodial trust vault, and program exactly how and when it reaches the people you love — vesting birthdays, monthly allowances, education unlocks, and an automated dead-man's switch.
