@@ -17,8 +17,7 @@ lerna-debug.log*
 
 technical-docs/*
 !technical-docs/*.md
-technical-docs/TECH_UPDATES.md
-technical-docs/TECH_UPDATES.zh-CN.md
+technical-docs/TECH_UPDATES*
 
 # Dependencies and build outputs
 node_modules
