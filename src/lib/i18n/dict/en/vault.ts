@@ -46,6 +46,7 @@ export const vault = {
   tabs: {
     portfolio: "Portfolio",
     schedule: "Schedule",
+    inference: "AI Allowance",
     letter: "Letter",
   },
 
@@ -81,6 +82,44 @@ export const vault = {
     releaseTrigger: "Release Trigger",
     triggerReached: "Calendar milestone reached",
     triggerPending: "Calendar unlock or upon Grantor succession execution",
+  },
+
+  inference: {
+    title: "AI for life, funded in advance.",
+    micro: "CREDIT ALLOWANCE · POWERED BY ORBIO",
+    hint: "Once configured, this pays out automatically on its own schedule — activated straight to the beneficiary's Orbio balance. Nothing to claim, no transaction for them to sign.",
+    emptyTitle: "No AI allowance configured yet.",
+    emptyBody: "Seal a USDG allowance and it pays out CREDIT on a schedule, unattended.",
+
+    formTitle: "Configure an allowance",
+    usdgPerCycleLabel: "USDG per cycle",
+    usdgPerCyclePlaceholder: "e.g. 100",
+    cadenceDaysLabel: "Every (days)",
+    cadenceDaysPlaceholder: "e.g. 30",
+    totalUsdgLabel: "Total USDG to seal",
+    totalUsdgPlaceholder: "e.g. 1200",
+    beneficiaryOverrideLabel: "Beneficiary (optional override)",
+    beneficiaryOverridePlaceholder: "Defaults to this trust's beneficiary",
+    submit: "Seal Allowance",
+    submitting: "Sealing allowance…",
+    configuredNotice: (usdgPerCycle: string, cadenceDays: string, totalUsdg: string) =>
+      `Sealed: ${usdgPerCycle} USDG every ${cadenceDays} day(s), ${totalUsdg} USDG total.`,
+
+    schedulesTitle: "Active allowances",
+    colBeneficiary: "Beneficiary",
+    colPerCycle: "Per cycle",
+    colRemaining: "Remaining",
+    colNextRelease: "Next release",
+    colStatus: "Status",
+    statusActive: "Active",
+    statusExhausted: "Exhausted",
+
+    releasesTitle: "Release history",
+    releaseConfirmed: "Activated",
+    releaseDeferredThinBook: "Deferred — thin order book",
+    releaseDeferredFunds: "Deferred — insufficient vault balance",
+    releaseFailed: "Failed",
+    viewTx: "View tx",
   },
 
   letter: {

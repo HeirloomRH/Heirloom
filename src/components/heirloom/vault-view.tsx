@@ -40,9 +40,13 @@ import {
   submitSealedDeposit,
   createTelegramPairing,
   unlinkTelegram,
+  configureInferenceAllowance,
+  fetchInferenceAllowances,
   type TrustResponse,
   type RelayerInfoResponse,
   type TelegramPairingResponse,
+  type InferenceSchedule,
+  type InferenceRelease,
 } from "@/lib/api";
 import { ROBINHOOD_CHAIN_ID, ROBINHOOD_EXPLORER_URL } from "@/lib/chain";
 import { DemoNotice, Dialog } from "./product";
@@ -79,7 +83,7 @@ import { quoteCreditLeg, buildCreditLegPayload } from "@/lib/heirloom/orbio";
 
 
 // Tab identity is a stable key; only the label is translated.
-const TAB_KEYS = ["portfolio", "schedule", "letter"] as const;
+const TAB_KEYS = ["portfolio", "schedule", "inference", "letter"] as const;
 type TabKey = (typeof TAB_KEYS)[number];
 
 type ScheduleCopy = ReturnType<typeof useT>["vault"]["schedule"];
@@ -161,6 +165,18 @@ export function VaultView() {
   const [relayerInfo, setRelayerInfo] = useState<RelayerInfoResponse | null>(null);
   const [approvingPermit2, setApprovingPermit2] = useState(false);
   const [isRelaying, setIsRelaying] = useState(false);
+
+  // --- AI Allowance (InferenceLeg) ---
+  const [inferenceUsdgPerCycle, setInferenceUsdgPerCycle] = useState("");
+  const [inferenceCadenceDays, setInferenceCadenceDays] = useState("30");
+  const [inferenceTotalUsdg, setInferenceTotalUsdg] = useState("");
+  const [inferenceBeneficiaryOverride, setInferenceBeneficiaryOverride] = useState("");
+  const [inferenceSchedules, setInferenceSchedules] = useState<InferenceSchedule[]>([]);
+  const [inferenceReleases, setInferenceReleases] = useState<InferenceRelease[]>([]);
+  const [inferenceLoading, setInferenceLoading] = useState(false);
+  const [inferenceSubmitting, setInferenceSubmitting] = useState(false);
+  const [inferenceError, setInferenceError] = useState("");
+  const [inferenceNotice, setInferenceNotice] = useState("");
 
   // --- Telegram Bot Integration ---
   const [telegramPairing, setTelegramPairing] = useState<TelegramPairingResponse | null>(null);
@@ -347,6 +363,69 @@ export function VaultView() {
     };
     // Depends on the split, not on the quote map that the split produces.
   }, [dialog, depositMode, publicClient, routerStatus, depositAmount, slippageBps, basketInputAsset]);
+
+  // Load AI allowance schedules/releases when that tab is opened.
+  useEffect(() => {
+    if (tab !== "inference" || !realTrust?.trust.id) return;
+    let cancelled = false;
+    setInferenceLoading(true);
+    fetchInferenceAllowances(realTrust.trust.id)
+      .then(({ schedules, releases }) => {
+        if (!cancelled) {
+          setInferenceSchedules(schedules);
+          setInferenceReleases(releases);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setInferenceLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, realTrust?.trust.id]);
+
+  const handleConfigureInference = async () => {
+    if (!realTrust?.trust.id || !address) {
+      setInferenceError(t.vault.errors.connectToDeposit);
+      return;
+    }
+    if (!inferenceUsdgPerCycle || !inferenceCadenceDays || !inferenceTotalUsdg) {
+      setInferenceError(t.vault.errors.invalidAmount);
+      return;
+    }
+
+    setInferenceSubmitting(true);
+    setInferenceError("");
+    setInferenceNotice("");
+    try {
+      await configureInferenceAllowance(realTrust.trust.id, {
+        grantorAddress: address,
+        usdgPerCycle: inferenceUsdgPerCycle,
+        cadenceDays: parseInt(inferenceCadenceDays, 10),
+        totalUsdg: inferenceTotalUsdg,
+        beneficiaryAddress: inferenceBeneficiaryOverride || undefined,
+      });
+
+      setInferenceNotice(
+        t.vault.inference.configuredNotice(
+          inferenceUsdgPerCycle,
+          inferenceCadenceDays,
+          inferenceTotalUsdg,
+        ),
+      );
+      setInferenceUsdgPerCycle("");
+      setInferenceTotalUsdg("");
+      setInferenceBeneficiaryOverride("");
+
+      const { schedules, releases } = await fetchInferenceAllowances(realTrust.trust.id);
+      setInferenceSchedules(schedules);
+      setInferenceReleases(releases);
+    } catch (e: any) {
+      setInferenceError(e?.message || t.vault.errors.txFailed);
+    } finally {
+      setInferenceSubmitting(false);
+    }
+  };
 
   // Planner and validator codes share the vault error dictionary.
   const codeToMessage = (code: string): string => {
@@ -1404,6 +1483,179 @@ export function VaultView() {
                     );
                   })}
                 </div>
+              </>
+            )}
+
+            {tab === "inference" && (
+              <>
+                <div className="spread panel-title">
+                  <h2>{t.vault.inference.title}</h2>
+                  <span className="micro">{t.vault.inference.micro}</span>
+                </div>
+                <p className="field-hint" style={{ marginTop: "-6px", marginBottom: "16px" }}>
+                  {t.vault.inference.hint}
+                </p>
+
+                {isGrantor && !isSuccessionTriggered && (
+                  <div className="deposit-field" style={{ marginBottom: "24px" }}>
+                    <h3 style={{ marginBottom: "10px" }}>{t.vault.inference.formTitle}</h3>
+
+                    <label className="deposit-label">{t.vault.inference.usdgPerCycleLabel}</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      placeholder={t.vault.inference.usdgPerCyclePlaceholder}
+                      value={inferenceUsdgPerCycle}
+                      onChange={(e) => setInferenceUsdgPerCycle(e.target.value)}
+                      style={{ marginBottom: "10px" }}
+                    />
+
+                    <label className="deposit-label">{t.vault.inference.cadenceDaysLabel}</label>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      placeholder={t.vault.inference.cadenceDaysPlaceholder}
+                      value={inferenceCadenceDays}
+                      onChange={(e) => setInferenceCadenceDays(e.target.value)}
+                      style={{ marginBottom: "10px" }}
+                    />
+
+                    <label className="deposit-label">{t.vault.inference.totalUsdgLabel}</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      placeholder={t.vault.inference.totalUsdgPlaceholder}
+                      value={inferenceTotalUsdg}
+                      onChange={(e) => setInferenceTotalUsdg(e.target.value)}
+                      style={{ marginBottom: "10px" }}
+                    />
+
+                    <label className="deposit-label">
+                      {t.vault.inference.beneficiaryOverrideLabel}
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={t.vault.inference.beneficiaryOverridePlaceholder}
+                      value={inferenceBeneficiaryOverride}
+                      onChange={(e) => setInferenceBeneficiaryOverride(e.target.value)}
+                      style={{ marginBottom: "14px" }}
+                    />
+
+                    {inferenceError && (
+                      <p className="field-hint" style={{ color: "var(--error, #c0524a)" }}>
+                        {inferenceError}
+                      </p>
+                    )}
+                    {inferenceNotice && (
+                      <p className="field-hint" style={{ color: "var(--success, #4a8f5c)" }}>
+                        {inferenceNotice}
+                      </p>
+                    )}
+
+                    <button
+                      className="button primary"
+                      onClick={handleConfigureInference}
+                      disabled={inferenceSubmitting}
+                    >
+                      {inferenceSubmitting
+                        ? t.vault.inference.submitting
+                        : t.vault.inference.submit}
+                    </button>
+                  </div>
+                )}
+
+                <h3 style={{ marginBottom: "10px" }}>{t.vault.inference.schedulesTitle}</h3>
+                {inferenceLoading ? (
+                  <p className="field-hint">{t.vault.loading}</p>
+                ) : inferenceSchedules.length === 0 ? (
+                  <div className="letter-empty">
+                    <Heart size={25} />
+                    <h3>{t.vault.inference.emptyTitle}</h3>
+                    <p>{t.vault.inference.emptyBody}</p>
+                  </div>
+                ) : (
+                  <table className="holdings-table" style={{ marginBottom: "24px" }}>
+                    <thead>
+                      <tr>
+                        <th>{t.vault.inference.colBeneficiary}</th>
+                        <th>{t.vault.inference.colPerCycle}</th>
+                        <th>{t.vault.inference.colRemaining}</th>
+                        <th>{t.vault.inference.colNextRelease}</th>
+                        <th>{t.vault.inference.colStatus}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {inferenceSchedules.map((s) => (
+                        <tr key={s.id}>
+                          <td className="font-mono">
+                            {s.beneficiary_address.slice(0, 6)}...{s.beneficiary_address.slice(-4)}
+                          </td>
+                          <td>{formatUnits(BigInt(s.usdg_per_cycle_atomic), 6)} USDG</td>
+                          <td>{formatUnits(BigInt(s.total_remaining_atomic), 6)} USDG</td>
+                          <td>
+                            {new Date(s.next_release_at).toLocaleDateString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </td>
+                          <td>
+                            {s.active
+                              ? t.vault.inference.statusActive
+                              : t.vault.inference.statusExhausted}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+
+                {inferenceReleases.length > 0 && (
+                  <>
+                    <h3 style={{ marginBottom: "10px" }}>{t.vault.inference.releasesTitle}</h3>
+                    <table className="holdings-table">
+                      <thead>
+                        <tr>
+                          <th>{t.vault.inference.colPerCycle}</th>
+                          <th>{t.vault.inference.colStatus}</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {inferenceReleases.map((r) => {
+                          const statusLabel =
+                            r.status === "confirmed"
+                              ? t.vault.inference.releaseConfirmed
+                              : r.status === "deferred_thin_book"
+                                ? t.vault.inference.releaseDeferredThinBook
+                                : r.status === "deferred_insufficient_funds"
+                                  ? t.vault.inference.releaseDeferredFunds
+                                  : t.vault.inference.releaseFailed;
+                          return (
+                            <tr key={r.id}>
+                              <td>{formatUnits(BigInt(r.usdg_spent_atomic || "0"), 6)} USDG</td>
+                              <td>{statusLabel}</td>
+                              <td>
+                                {r.tx_hash && (
+                                  <a
+                                    href={`${ROBINHOOD_EXPLORER_URL}/tx/${r.tx_hash}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    {t.vault.inference.viewTx}
+                                  </a>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </>
+                )}
               </>
             )}
 

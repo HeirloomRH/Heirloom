@@ -347,6 +347,69 @@ export async function submitSealedDeposit(
   return data;
 }
 
+export interface InferenceSchedule {
+  id: string;
+  trust_id: string;
+  beneficiary_address: string;
+  usdg_per_cycle_atomic: string;
+  cadence_days: number;
+  next_release_at: string;
+  total_remaining_atomic: string;
+  active: boolean;
+  created_at: string;
+}
+
+export interface InferenceRelease {
+  id: string;
+  trust_id: string;
+  schedule_id: string | null;
+  beneficiary_address: string;
+  usdg_spent_atomic: string;
+  tx_hash: string | null;
+  status: string;
+  detail: string | null;
+  created_at: string;
+}
+
+/**
+ * Grantor configures a recurring CREDIT allowance: usdgPerCycle spent every
+ * cadenceDays, activated straight to the beneficiary's Orbio key, no claim
+ * required.
+ */
+export async function configureInferenceAllowance(
+  trustId: string,
+  payload: {
+    grantorAddress: string;
+    usdgPerCycle: string;
+    cadenceDays: number;
+    totalUsdg: string;
+    beneficiaryAddress?: string;
+  },
+): Promise<{ success: boolean; scheduleId: string; nextReleaseAt: string; message: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/trusts/${trustId}/legs/inference`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to configure inference allowance");
+  }
+  return data;
+}
+
+/**
+ * List configured CREDIT allowances and their release history for a trust.
+ */
+export async function fetchInferenceAllowances(
+  trustId: string,
+): Promise<{ schedules: InferenceSchedule[]; releases: InferenceRelease[] }> {
+  const res = await fetch(`${API_BASE_URL}/api/trusts/${trustId}/legs/inference`);
+  if (!res.ok) return { schedules: [], releases: [] };
+  const data = await res.json();
+  return { schedules: data.schedules || [], releases: data.releases || [] };
+}
+
 export interface TelegramPairingResponse {
   success: boolean;
   pairingToken: string;

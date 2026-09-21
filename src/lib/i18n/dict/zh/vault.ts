@@ -48,6 +48,7 @@ export const vault: typeof EnVault = {
   tabs: {
     portfolio: "投资组合",
     schedule: "解锁时间表",
+    inference: "AI 配额",
     letter: "信件",
   },
 
@@ -83,6 +84,44 @@ export const vault: typeof EnVault = {
     releaseTrigger: "释放触发条件",
     triggerReached: "日历里程碑已到达",
     triggerPending: "按日历解锁，或在委托人继承程序执行时解锁",
+  },
+
+  inference: {
+    title: "AI 终身配额，提前预置资金。",
+    micro: "CREDIT 配额 · 由 ORBIO 提供支持",
+    hint: "配置完成后，将按既定计划自动发放——直接激活至受益人的 Orbio 余额。无需领取，受益人无需签署任何交易。",
+    emptyTitle: "尚未配置 AI 配额。",
+    emptyBody: "封存一笔 USDG 配额，即可按计划自动发放 CREDIT，无需人工干预。",
+
+    formTitle: "配置配额",
+    usdgPerCycleLabel: "每周期 USDG 数量",
+    usdgPerCyclePlaceholder: "例如 100",
+    cadenceDaysLabel: "发放间隔（天）",
+    cadenceDaysPlaceholder: "例如 30",
+    totalUsdgLabel: "封存的 USDG 总额",
+    totalUsdgPlaceholder: "例如 1200",
+    beneficiaryOverrideLabel: "受益人（可选，覆盖默认值）",
+    beneficiaryOverridePlaceholder: "默认为此信托的受益人",
+    submit: "封存配额",
+    submitting: "正在封存配额…",
+    configuredNotice: (usdgPerCycle: string, cadenceDays: string, totalUsdg: string) =>
+      `已封存：每 ${cadenceDays} 天发放 ${usdgPerCycle} USDG，总额 ${totalUsdg} USDG。`,
+
+    schedulesTitle: "生效中的配额",
+    colBeneficiary: "受益人",
+    colPerCycle: "每周期",
+    colRemaining: "剩余",
+    colNextRelease: "下次发放",
+    colStatus: "状态",
+    statusActive: "生效中",
+    statusExhausted: "已用尽",
+
+    releasesTitle: "发放记录",
+    releaseConfirmed: "已激活",
+    releaseDeferredThinBook: "已延迟 — 订单簿深度不足",
+    releaseDeferredFunds: "已延迟 — 金库余额不足",
+    releaseFailed: "失败",
+    viewTx: "查看交易",
   },
 
   letter: {
