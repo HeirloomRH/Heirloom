@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { usePageMeta } from "@/lib/i18n/use-page-meta";
 import WhitepaperPage from "@/components/heirloom/whitepaper-page";
 
 export const Route = createFileRoute("/whitepaper")({
@@ -20,5 +21,10 @@ export const Route = createFileRoute("/whitepaper")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: WhitepaperPage,
+  component: WhitepaperRoute,
 });
+
+function WhitepaperRoute() {
+  usePageMeta("whitepaper");
+  return <WhitepaperPage />;
+}

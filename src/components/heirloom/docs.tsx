@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Search,
@@ -15,39 +15,18 @@ import {
   Command,
 } from "lucide-react";
 import { Brand, Mark } from "./chrome";
-import { articles } from "@/lib/heirloom/docs-data";
-
-const groups = [
-  { name: "GETTING STARTED", ids: ["preview", "vaults"] },
-  {
-    name: "BUILD YOUR PLAN",
-    ids: [
-      "portfolio",
-      "schedules",
-      "heartbeat",
-      "guardians",
-      "modes",
-      "letters",
-    ],
-  },
-  { name: "PROTOCOL", ids: ["network", "boundaries", "token"] },
-];
-const shortNames: Record<string, string> = {
-  preview: "Introduction",
-  vaults: "How vaults work",
-  portfolio: "Portfolio & assets",
-  schedules: "Release schedules",
-  heartbeat: "Heartbeats",
-  guardians: "Guardians",
-  modes: "Vault terms",
-  letters: "Personal letters",
-  network: "Robinhood Chain",
-  boundaries: "Risks & boundaries",
-  token: "$HEIR roadmap",
-};
+import {
+  articleGroups,
+  articleIds,
+  articleSources,
+  type ArticleId,
+} from "@/lib/heirloom/docs-data";
+import { useLocale, useT } from "@/lib/i18n";
 
 export function Docs() {
-  const [active, setActive] = useState("preview");
+  const t = useT();
+  const { locale } = useLocale();
+  const [active, setActive] = useState<ArticleId>("preview");
   const [query, setQuery] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -55,6 +34,20 @@ export function Docs() {
   const input = useRef<HTMLInputElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Article copy is rebuilt whenever the locale changes, so search runs
+  // against the language the reader is actually seeing.
+  const articles = useMemo(
+    () =>
+      articleIds.map((id) => ({
+        id,
+        ...t.docs.articles[id],
+        source: articleSources[id],
+      })),
+    [t],
+  );
+  const shortNames = t.docs.shortNames;
+
   const closeMenu = () => {
     setMenuOpen(false);
     requestAnimationFrame(() =>
@@ -74,10 +67,8 @@ export function Docs() {
   useEffect(() => {
     const readHash = () => {
       const id = window.location.hash.slice(1);
-      const topic = articles.find(
-        (a) => id === a.id || id.startsWith(a.id + "-"),
-      );
-      if (topic) setActive(topic.id);
+      const topic = articleIds.find((a) => id === a || id.startsWith(a + "-"));
+      if (topic) setActive(topic);
       else if (!id) setActive("preview");
     };
     readHash();
@@ -102,7 +93,7 @@ export function Docs() {
       if (copyTimer.current) clearTimeout(copyTimer.current);
     };
   }, []);
-  const choose = (id: string) => {
+  const choose = (id: ArticleId) => {
     window.history.pushState(null, "", `#${id}`);
     setActive(id);
     setQuery("");
@@ -127,18 +118,26 @@ export function Docs() {
       setCopyFailed(true);
     }
   };
+
+  // Chinese has no spaces, so word-count reading time would always be 1.
+  const readingMinutes = (text: string) => {
+    const units =
+      locale === "zh" ? text.length / 400 : text.split(" ").length / 180;
+    return Math.max(1, Math.ceil(units));
+  };
+
   return (
     <div className="handbook">
       {menuOpen && (
         <button
           className="handbook-scrim"
           onClick={closeMenu}
-          aria-label="Close documentation menu"
+          aria-label={t.docs.ui.closeMenu}
         />
       )}
       <aside
         className={`handbook-sidebar ${menuOpen ? "is-open" : ""}`}
-        aria-label="Documentation navigation"
+        aria-label={t.docs.ui.navAriaLabel}
         role={menuOpen ? "dialog" : undefined}
         aria-modal={menuOpen || undefined}
         onKeyDown={(e) => {
@@ -158,14 +157,14 @@ export function Docs() {
         }}
       >
         <div className="handbook-brand">
-          <Link to="/" aria-label="Heirloom home">
+          <Link to="/" aria-label={t.common.nav.home}>
             <Brand />
           </Link>
-          <span>DOCS</span>
+          <span>{t.docs.ui.label}</span>
           <button
             className="handbook-close"
             onClick={closeMenu}
-            aria-label="Close navigation"
+            aria-label={t.docs.ui.closeNav}
           >
             <X size={18} />
           </button>
@@ -176,8 +175,8 @@ export function Docs() {
             ref={input}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Find an answer…"
-            aria-label="Search documentation"
+            placeholder={t.docs.ui.searchPlaceholder}
+            aria-label={t.docs.ui.searchAriaLabel}
           />
           <kbd>
             <Command size={10} /> K
@@ -186,7 +185,9 @@ export function Docs() {
         <nav>
           {query.trim() ? (
             <div className="handbook-nav-group">
-              <p role="status">{filtered.length} RESULTS</p>
+              <p role="status">
+                {filtered.length} {t.docs.ui.resultsSuffix}
+              </p>
               {filtered.map((a) => (
                 <a
                   href={`#${a.id}`}
@@ -200,12 +201,12 @@ export function Docs() {
                   <ChevronRight size={14} />
                 </a>
               ))}
-              {!filtered.length && <p>Try another search term.</p>}
+              {!filtered.length && <p>{t.docs.ui.noMatches}</p>}
             </div>
           ) : (
-            groups.map((group) => (
-              <div className="handbook-nav-group" key={group.name}>
-                <p>{group.name}</p>
+            articleGroups.map((group) => (
+              <div className="handbook-nav-group" key={group.key}>
+                <p>{t.docs.groups[group.key]}</p>
                 {group.ids.map((id) => (
                   <a
                     key={id}
@@ -226,11 +227,11 @@ export function Docs() {
         </nav>
         <div className="handbook-side-bottom">
           <span className="handbook-status">
-            <i /> Frontend preview
+            <i /> {t.docs.ui.sidebarStatus}
           </span>
-          <p>A working demo of a long-term idea.</p>
+          <p>{t.docs.ui.sidebarNote}</p>
           <Link to="/create">
-            Try the builder <ArrowUpRight size={14} />
+            {t.docs.ui.sidebarCta} <ArrowUpRight size={14} />
           </Link>
         </div>
       </aside>
@@ -239,36 +240,36 @@ export function Docs() {
           <button
             className="handbook-menu"
             onClick={() => setMenuOpen(true)}
-            aria-label="Open documentation menu"
+            aria-label={t.docs.ui.openMenu}
             aria-expanded={menuOpen}
           >
             <Menu size={20} />
           </button>
           <div>
-            <span>Documentation</span>
+            <span>{t.docs.ui.breadcrumbRoot}</span>
             <ChevronRight size={13} />
             <span>{shortNames[active]}</span>
           </div>
           <Link to="/app">
-            Open app <ArrowUpRight size={14} />
+            {t.docs.ui.openApp} <ArrowUpRight size={14} />
           </Link>
         </header>
         {query.trim() ? (
-          <section className="handbook-results" aria-label="Search results">
+          <section
+            className="handbook-results"
+            aria-label={t.docs.ui.searchResultsAriaLabel}
+          >
             <div className="handbook-results-head">
-              <span className="handbook-kicker">SEARCH THE HANDBOOK</span>
+              <span className="handbook-kicker">{t.docs.ui.searchKicker}</span>
               <button
                 onClick={() => setQuery("")}
-                aria-label="Close search results"
+                aria-label={t.docs.ui.closeResults}
               >
                 <X size={18} />
               </button>
             </div>
-            <h1>Results for “{query}”</h1>
-            <p role="status">
-              {filtered.length} {filtered.length === 1 ? "article" : "articles"}{" "}
-              found
-            </p>
+            <h1>{t.docs.ui.resultsFor(query)}</h1>
+            <p role="status">{t.docs.ui.articlesFound(filtered.length)}</p>
             {filtered.map((a) => (
               <button
                 className="handbook-result"
@@ -286,15 +287,15 @@ export function Docs() {
             {!filtered.length && (
               <div className="handbook-no-results">
                 <BookOpen size={30} />
-                <h2>No answers found yet.</h2>
-                <p>Try “guardian”, “schedule”, or “portfolio”.</p>
+                <h2>{t.docs.ui.noResultsTitle}</h2>
+                <p>{t.docs.ui.noResultsBody}</p>
                 <button
                   onClick={() => {
                     setQuery("");
                     input.current?.focus();
                   }}
                 >
-                  Clear search
+                  {t.docs.ui.clearSearch}
                 </button>
               </div>
             )}
@@ -309,67 +310,73 @@ export function Docs() {
                 </span>
               </div>
               <h1 ref={heading} tabIndex={-1}>
-                {active === "preview"
-                  ? "A clear plan.\nA lasting legacy."
-                  : article.title}
+                {active === "preview" ? (
+                  <>
+                    {t.docs.intro.titleLine1}
+                    <br />
+                    {t.docs.intro.titleLine2}
+                  </>
+                ) : (
+                  article.title
+                )}
               </h1>
               <p className="handbook-deck">
                 {active === "preview"
-                  ? "The essentials of Heirloom, from your first portfolio to the wishes that guide it."
-                  : `A practical guide to ${shortNames[active].toLowerCase()} in Heirloom.`}
+                  ? t.docs.intro.deck
+                  : t.docs.intro.deckTemplate(
+                      locale === "zh"
+                        ? shortNames[active]
+                        : shortNames[active].toLowerCase(),
+                    )}
               </p>
               <div className="handbook-article-tools">
                 <span>
                   <BookOpen size={14} />{" "}
-                  {Math.max(
-                    1,
-                    Math.ceil(
-                      (article.text + article.extra).split(" ").length / 180,
-                    ),
-                  )}{" "}
-                  min read
+                  {t.docs.ui.minRead(
+                    readingMinutes(article.text + article.extra),
+                  )}
                 </span>
                 <button onClick={copy}>
                   {copied ? <Check size={14} /> : <LinkIcon size={14} />}{" "}
-                  {copied ? "Link copied" : "Copy link"}
+                  {copied ? t.docs.ui.linkCopied : t.docs.ui.copyLink}
                 </button>
               </div>
               {copyFailed && (
                 <p className="handbook-copy-fallback" role="status">
-                  Copy this link: /docs/#{active}
+                  {t.docs.ui.copyFallback(active)}
                 </p>
               )}
               {active === "preview" && (
                 <div className="handbook-cover">
                   <div className="handbook-cover-top">
-                    <span>THE HEIRLOOM HANDBOOK</span>
-                    <span>01 — BEGIN HERE</span>
+                    <span>{t.docs.intro.coverTop}</span>
+                    <span>{t.docs.intro.coverIndex}</span>
                   </div>
                   <div className="handbook-cover-middle">
                     <Mark />
                     <span>
-                      Good intentions.
+                      {t.docs.intro.coverLine1}
                       <br />
-                      Clear instructions.
+                      {t.docs.intro.coverLine2}
                     </span>
                   </div>
                   <div className="handbook-cover-bottom">
-                    <span>Portfolio</span>
+                    <span>{t.docs.intro.coverA}</span>
                     <i />
-                    <span>People</span>
+                    <span>{t.docs.intro.coverB}</span>
                     <i />
-                    <span>Purpose</span>
+                    <span>{t.docs.intro.coverC}</span>
                   </div>
                 </div>
               )}
               <section id={`${active}-overview`}>
-                <h2>Overview</h2>
+                <h2>{t.docs.ui.overviewHeading}</h2>
                 <p>{article.text}</p>
               </section>
               <section id={`${active}-preview`} className="handbook-callout">
                 <div>
                   <Info size={18} />
-                  <h2>In the current preview</h2>
+                  <h2>{t.docs.ui.previewHeading}</h2>
                 </div>
                 <p>{article.extra}</p>
               </section>
@@ -381,7 +388,7 @@ export function Docs() {
                   rel="noreferrer"
                 >
                   <span>
-                    <small>PRIMARY SOURCE</small>
+                    <small>{t.docs.ui.primarySource}</small>
                     {article.sourceLabel}
                   </span>
                   <ArrowUpRight size={18} />
@@ -389,23 +396,21 @@ export function Docs() {
               )}
               {active === "preview" && (
                 <section id="preview-next">
-                  <h2>Make your first plan</h2>
+                  <h2>{t.docs.intro.startHeading}</h2>
                   <div className="handbook-start-links">
                     <Link to="/create">
                       <b>01</b>
                       <span>
-                        Create a demo trust
-                        <small>
-                          Portfolio, beneficiary, terms, and letter.
-                        </small>
+                        {t.docs.intro.start1Title}
+                        <small>{t.docs.intro.start1Body}</small>
                       </span>
                       <ArrowUpRight size={17} />
                     </Link>
                     <Link to="/vault" search={{ id: "sample" }}>
                       <b>02</b>
                       <span>
-                        Explore a sample
-                        <small>See how the pieces come together.</small>
+                        {t.docs.intro.start2Title}
+                        <small>{t.docs.intro.start2Body}</small>
                       </span>
                       <ArrowUpRight size={17} />
                     </Link>
@@ -422,7 +427,7 @@ export function Docs() {
                     }}
                   >
                     <small>
-                      <ArrowLeft size={13} /> PREVIOUS
+                      <ArrowLeft size={13} /> {t.docs.ui.previousLabel}
                     </small>
                     <span>{shortNames[articles[index - 1].id]}</span>
                   </a>
@@ -438,31 +443,31 @@ export function Docs() {
                     }}
                   >
                     <small>
-                      NEXT <ArrowRight size={13} />
+                      {t.docs.ui.nextLabel} <ArrowRight size={13} />
                     </small>
                     <span>{shortNames[articles[index + 1].id]}</span>
                   </a>
                 )}
               </div>
               <footer className="handbook-article-footer">
-                <span>Heirloom documentation</span>
+                <span>{t.docs.ui.footerLabel}</span>
                 <Link to="/roadmap">
-                  View the roadmap <ArrowUpRight size={12} />
+                  {t.docs.ui.footerCta} <ArrowUpRight size={12} />
                 </Link>
               </footer>
             </article>
             <aside className="handbook-toc">
-              <p>ON THIS PAGE</p>
-              <a href={`#${active}-overview`}>Overview</a>
-              <a href={`#${active}-preview`}>In this preview</a>
+              <p>{t.docs.ui.tocLabel}</p>
+              <a href={`#${active}-overview`}>{t.docs.ui.tocOverview}</a>
+              <a href={`#${active}-preview`}>{t.docs.ui.tocPreview}</a>
               {active === "preview" && (
-                <a href="#preview-next">Make your first plan</a>
+                <a href="#preview-next">{t.docs.ui.tocNext}</a>
               )}
               <div>
-                <span>Built with intention.</span>
-                <p>Start small. Make the details count.</p>
+                <span>{t.docs.ui.tocAsideTitle}</span>
+                <p>{t.docs.ui.tocAsideBody}</p>
                 <Link to="/create">
-                  Create a trust <ArrowUpRight size={13} />
+                  {t.docs.ui.tocAsideCta} <ArrowUpRight size={13} />
                 </Link>
               </div>
             </aside>

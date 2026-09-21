@@ -6,114 +6,69 @@ import {
   Layers,
   LockKeyhole,
 } from "lucide-react";
+import { useT } from "@/lib/i18n";
+
+// Structure and iconography stay in code; every string comes from the dictionary.
 const phases = [
-  {
-    n: "H1",
-    title: "A foundation for tomorrow.",
-    tag: "FRONTEND PREVIEW",
-    icon: Sprout,
-    description:
-      "Start with the things that matter: a portfolio, a person, and a plan.",
-    items: [
-      "Trust builder & portfolio allocation",
-      "Vesting cliffs & release schedules",
-      "Succession check-in interface",
-      "Trust page & personal letter",
-    ],
-    note: "Interactive local demo available. Vault contracts and schedule execution remain production work.",
-  },
-  {
-    n: "H2",
-    title: "Support for life as it happens.",
-    tag: "PLANNED",
-    icon: ShieldCheck,
-    description: "Give a long-term plan a thoughtful support system.",
-    items: [
-      "Monthly allowance streams",
-      "Stock Token or USDG distributions",
-      "Bounded guardian roles",
-      "Guardian-attested milestone unlocks",
-    ],
-    note: "Guardian address capture is included in the demo. Allowance and attestation execution are planned.",
-  },
-  {
-    n: "H3",
-    title: "A legacy beyond one generation.",
-    tag: "PLANNED",
-    icon: Layers,
-    description: "Let one good intention become the beginning of another.",
-    items: [
-      "$HEIR protocol token",
-      "Premium product features",
-      "Multi-generation vault chains",
-      "Protocol fee mechanisms",
-    ],
-    note: "Token contracts, fees, premium rules, and distribution policies are not finalized or live.",
-  },
-  {
-    n: "H4",
-    title: "Privacy, with proof of provision.",
-    tag: "RESEARCH",
-    icon: LockKeyhole,
-    description: "Explore ways to preserve privacy without losing clarity.",
-    items: [
-      "Private vault mode",
-      "Shielded portfolio research",
-      "Attestation-based proofs",
-      "Private beneficiary delivery",
-    ],
-    note: "Research direction only. No shielded balances or private proof system is implemented.",
-  },
-];
+  { n: "H1", key: "h1", icon: Sprout, tag: "frontendPreview" },
+  { n: "H2", key: "h2", icon: ShieldCheck, tag: "planned" },
+  { n: "H3", key: "h3", icon: Layers, tag: "planned" },
+  { n: "H4", key: "h4", icon: LockKeyhole, tag: "research" },
+] as const;
+
 export default function Page() {
+  const t = useT();
   return (
     <main id="main" className="shell roadmap-page">
       <div className="docs-hero">
-        <p className="eyebrow">BUILT FOR THE LONG VIEW</p>
+        <p className="eyebrow">{t.roadmap.eyebrow}</p>
         <h1 className="product-title">
-          A beginning.
+          {t.roadmap.titleLine1}
           <br />
-          Then, generations.
+          {t.roadmap.titleLine2}
         </h1>
-        <p>Our path from a first vault to a lasting legacy.</p>
+        <p>{t.roadmap.subtitle}</p>
       </div>
       <div className="roadmap-intro">
-        <p>The vision is long-term. The work is step by step.</p>
+        <p>{t.roadmap.introLead}</p>
         <span>
-          Phases describe product intent.
+          {t.roadmap.introNoteLine1}
           <br />
-          They are not promised release dates.
+          {t.roadmap.introNoteLine2}
         </span>
       </div>
       <div className="roadmap-phases">
-        {phases.map((p) => (
-          <article key={p.n}>
-            <div className="phase-number">
-              {p.n}
-              <span>{p.tag}</span>
-            </div>
-            <div>
-              <p.icon size={26} />
-              <h2>{p.title}</h2>
-              <p>{p.description}</p>
-              <ul>
-                {p.items.map((i) => (
-                  <li key={i}>{i}</li>
-                ))}
-              </ul>
-              <p className="phase-note">{p.note}</p>
-            </div>
-          </article>
-        ))}
+        {phases.map((p) => {
+          const copy = t.roadmap.phases[p.key];
+          return (
+            <article key={p.n}>
+              <div className="phase-number">
+                {p.n}
+                <span>{t.roadmap.tags[p.tag]}</span>
+              </div>
+              <div>
+                <p.icon size={26} />
+                <h2>{copy.title}</h2>
+                <p>{copy.description}</p>
+                <ul>
+                  {copy.items.map((i) => (
+                    <li key={i}>{i}</li>
+                  ))}
+                </ul>
+                <p className="phase-note">{copy.note}</p>
+              </div>
+            </article>
+          );
+        })}
       </div>
       <div className="roadmap-end">
         <h2>
-          Start with something
+          {t.roadmap.endTitleLine1}
           <br />
-          worth passing on.
+          {t.roadmap.endTitleLine2}
         </h2>
         <Link className="button primary" to="/create">
-          Explore the trust builder <ArrowUpRight size={15} />
+          {t.roadmap.endCta} <ArrowUpRight size={15} />
         </Link>
       </div>
     </main>
