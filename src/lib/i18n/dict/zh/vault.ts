@@ -137,6 +137,18 @@ export const vault: typeof EnVault = {
     stakeEventStake: "已质押",
     stakeEventUnstake: "已解除质押",
     stakeEventClaim: "已领取 CREDIT",
+
+    successionTitle: "继承 AI 配额",
+    successionHint:
+      "一笔一次性 USDG 配额，在继承触发的瞬间转换为激活的 CREDIT 交付给继承人。无需领取，继承人无需签署任何操作。",
+    successionBudgetLabel: "一次性 USDG 配额",
+    successionBudgetPlaceholder: "例如 200",
+    successionSubmit: "设置配额",
+    settingBudget: "设置中…",
+    successionAlreadyGranted: (date: string) => `已于 ${date} 发放。此后无法更改。`,
+    successionConfiguredNotice: (amount: string) =>
+      `继承 AI 配额已设置：${amount} USDG，将在继承触发时激活并交付给继承人。`,
+    successionNotConfigured: "尚未配置继承 AI 配额。",
   },
 
   letter: {

@@ -136,6 +136,19 @@ export const vault = {
     stakeEventStake: "Staked",
     stakeEventUnstake: "Unstaked",
     stakeEventClaim: "CREDIT claimed",
+
+    successionTitle: "Succession AI Budget",
+    successionHint:
+      "A one-time USDG budget, converted to activated CREDIT for the successor the instant succession triggers. No claim, nothing for them to sign.",
+    successionBudgetLabel: "One-time USDG budget",
+    successionBudgetPlaceholder: "e.g. 200",
+    successionSubmit: "Set Budget",
+    settingBudget: "Setting…",
+    successionAlreadyGranted: (date: string) =>
+      `Granted on ${date}. This can no longer be changed.`,
+    successionConfiguredNotice: (amount: string) =>
+      `Succession AI budget set: ${amount} USDG, activated to the successor when succession triggers.`,
+    successionNotConfigured: "No succession AI budget configured.",
   },
 
   letter: {

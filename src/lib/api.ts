@@ -470,6 +470,53 @@ export async function unstakeOrbio(
   return data;
 }
 
+export interface SuccessionAiGrant {
+  id: string;
+  trust_id: string;
+  successor_address: string;
+  usdg_spent_atomic: string;
+  tx_hash: string | null;
+  status: string;
+  detail: string | null;
+  created_at: string;
+}
+
+export interface SuccessionAiBudgetStatus {
+  budgetUsdgAtomic: string | null;
+  grantedAt: string | null;
+  grants: SuccessionAiGrant[];
+}
+
+/** Live succession AI budget config + grant history for a trust. */
+export async function fetchSuccessionAiBudget(
+  trustId: string,
+): Promise<SuccessionAiBudgetStatus | null> {
+  const res = await fetch(`${API_BASE_URL}/api/trusts/${trustId}/succession-ai-budget`);
+  if (!res.ok) return null;
+  return res.json();
+}
+
+/**
+ * Grantor configures a one-time USDG budget that gets activated as CREDIT to
+ * the successor's key the moment succession triggers. Can only be set once
+ * — the route refuses changes after it's already been granted.
+ */
+export async function configureSuccessionAiBudget(
+  trustId: string,
+  payload: { grantorAddress: string; budgetUsdg: string },
+): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/trusts/${trustId}/succession-ai-budget`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to configure succession AI budget");
+  }
+  return data;
+}
+
 export interface TelegramPairingResponse {
   success: boolean;
   pairingToken: string;

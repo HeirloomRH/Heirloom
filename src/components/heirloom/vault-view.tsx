@@ -45,12 +45,15 @@ import {
   stakeOrbio,
   unstakeOrbio,
   fetchStakeStatus,
+  configureSuccessionAiBudget,
+  fetchSuccessionAiBudget,
   type TrustResponse,
   type RelayerInfoResponse,
   type TelegramPairingResponse,
   type InferenceSchedule,
   type InferenceRelease,
   type StakeStatus,
+  type SuccessionAiBudgetStatus,
 } from "@/lib/api";
 import { ROBINHOOD_CHAIN_ID, ROBINHOOD_EXPLORER_URL } from "@/lib/chain";
 import { DemoNotice, Dialog } from "./product";
@@ -191,6 +194,14 @@ export function VaultView() {
   const [unstaking, setUnstaking] = useState(false);
   const [stakeError, setStakeError] = useState("");
   const [stakeNotice, setStakeNotice] = useState("");
+
+  // --- Succession AI Budget ---
+  const [successionBudget, setSuccessionBudget] = useState("");
+  const [successionStatus, setSuccessionStatus] = useState<SuccessionAiBudgetStatus | null>(null);
+  const [successionLoading, setSuccessionLoading] = useState(false);
+  const [settingSuccessionBudget, setSettingSuccessionBudget] = useState(false);
+  const [successionError, setSuccessionError] = useState("");
+  const [successionNotice, setSuccessionNotice] = useState("");
 
   // --- Telegram Bot Integration ---
   const [telegramPairing, setTelegramPairing] = useState<TelegramPairingResponse | null>(null);
@@ -415,6 +426,23 @@ export function VaultView() {
     };
   }, [tab, realTrust?.trust.id]);
 
+  // Load succession AI budget config + grant history alongside it.
+  useEffect(() => {
+    if (tab !== "inference" || !realTrust?.trust.id) return;
+    let cancelled = false;
+    setSuccessionLoading(true);
+    fetchSuccessionAiBudget(realTrust.trust.id)
+      .then((status) => {
+        if (!cancelled) setSuccessionStatus(status);
+      })
+      .finally(() => {
+        if (!cancelled) setSuccessionLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, realTrust?.trust.id]);
+
   const handleConfigureInference = async () => {
     if (!realTrust?.trust.id || !address) {
       setInferenceError(t.vault.errors.connectToDeposit);
@@ -513,6 +541,35 @@ export function VaultView() {
       setStakeError(e?.message || t.vault.errors.txFailed);
     } finally {
       setUnstaking(false);
+    }
+  };
+
+  const handleConfigureSuccessionBudget = async () => {
+    if (!realTrust?.trust.id || !address) {
+      setSuccessionError(t.vault.errors.connectToDeposit);
+      return;
+    }
+    if (!successionBudget) {
+      setSuccessionError(t.vault.errors.invalidAmount);
+      return;
+    }
+
+    setSettingSuccessionBudget(true);
+    setSuccessionError("");
+    setSuccessionNotice("");
+    try {
+      await configureSuccessionAiBudget(realTrust.trust.id, {
+        grantorAddress: address,
+        budgetUsdg: successionBudget,
+      });
+      setSuccessionNotice(t.vault.inference.successionConfiguredNotice(successionBudget));
+      setSuccessionBudget("");
+      const status = await fetchSuccessionAiBudget(realTrust.trust.id);
+      setSuccessionStatus(status);
+    } catch (e: any) {
+      setSuccessionError(e?.message || t.vault.errors.txFailed);
+    } finally {
+      setSettingSuccessionBudget(false);
     }
   };
 
@@ -1855,6 +1912,70 @@ export function VaultView() {
                       </tbody>
                     </table>
                   </>
+                )}
+
+                {isGrantor && (
+                  <div className="deposit-field" style={{ marginTop: "24px" }}>
+                    <h3 style={{ marginBottom: "6px" }}>{t.vault.inference.successionTitle}</h3>
+                    <p className="field-hint" style={{ marginBottom: "10px" }}>
+                      {t.vault.inference.successionHint}
+                    </p>
+
+                    {!successionLoading && successionStatus?.grantedAt ? (
+                      <p className="field-hint">
+                        {t.vault.inference.successionAlreadyGranted(
+                          new Date(successionStatus.grantedAt).toLocaleDateString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          }),
+                        )}
+                      </p>
+                    ) : !successionLoading &&
+                      successionStatus &&
+                      !successionStatus.budgetUsdgAtomic ? (
+                      <>
+                        <label className="deposit-label">
+                          {t.vault.inference.successionBudgetLabel}
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          placeholder={t.vault.inference.successionBudgetPlaceholder}
+                          value={successionBudget}
+                          onChange={(e) => setSuccessionBudget(e.target.value)}
+                          style={{ marginBottom: "10px" }}
+                        />
+                        <button
+                          className="button primary"
+                          onClick={handleConfigureSuccessionBudget}
+                          disabled={settingSuccessionBudget}
+                        >
+                          {settingSuccessionBudget
+                            ? t.vault.inference.settingBudget
+                            : t.vault.inference.successionSubmit}
+                        </button>
+                      </>
+                    ) : !successionLoading && successionStatus?.budgetUsdgAtomic ? (
+                      <p className="field-hint">
+                        {t.vault.inference.successionConfiguredNotice(
+                          formatUnits(BigInt(successionStatus.budgetUsdgAtomic), 6),
+                        )}
+                      </p>
+                    ) : null}
+
+                    {successionError && (
+                      <p className="field-hint" style={{ color: "var(--error, #c0524a)" }}>
+                        {successionError}
+                      </p>
+                    )}
+                    {successionNotice && (
+                      <p className="field-hint" style={{ color: "var(--success, #4a8f5c)" }}>
+                        {successionNotice}
+                      </p>
+                    )}
+                  </div>
                 )}
               </>
             )}
