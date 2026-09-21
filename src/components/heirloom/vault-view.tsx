@@ -894,16 +894,36 @@ export function VaultView() {
     );
   }
 
-  // Calculate heartbeat days remaining
+  // Calculate heartbeat and grace period timing
   let daysRemaining = vault.heartbeat;
   if (vault.heartbeatDeadline) {
     const diffMs = new Date(vault.heartbeatDeadline).getTime() - Date.now();
     daysRemaining = Math.max(0, Math.ceil(diffMs / 86400000));
   }
 
+  const deadlineDate = vault.heartbeatDeadline ? new Date(vault.heartbeatDeadline) : null;
+  const graceDeadlineDate = realTrust?.trust.gracePeriodDeadline
+    ? new Date(realTrust.trust.gracePeriodDeadline)
+    : deadlineDate
+    ? new Date(deadlineDate.getTime() + 28 * 86400000)
+    : null;
+
+  const now = new Date();
+
   const isSuccessionTriggered =
     realTrust?.trust.status === "succession_triggered" ||
-    (vault.heartbeatDeadline && new Date() > new Date(vault.heartbeatDeadline));
+    (graceDeadlineDate && now > graceDeadlineDate);
+
+  const isInGracePeriod =
+    !isSuccessionTriggered &&
+    (realTrust?.trust.status === "in_grace_period" ||
+      (deadlineDate && now > deadlineDate && graceDeadlineDate && now <= graceDeadlineDate));
+
+  let graceDaysRemaining = 28;
+  if (graceDeadlineDate) {
+    const diffGraceMs = graceDeadlineDate.getTime() - now.getTime();
+    graceDaysRemaining = Math.max(0, Math.ceil(diffGraceMs / 86400000));
+  }
 
   const isGrantor = address && realTrust && address.toLowerCase() === realTrust.trust.grantorAddress.toLowerCase();
   const isBeneficiary = address && realTrust && address.toLowerCase() === realTrust.trust.beneficiaryAddress.toLowerCase();
@@ -930,17 +950,21 @@ export function VaultView() {
             <span
               className={`vault-status ${
                 isSuccessionTriggered
-                  ? "bg-rose-950/80 text-rose-300 border-rose-800"
+                  ? "bg-rose-950/80 text-rose-300 border-rose-800 font-semibold"
+                  : isInGracePeriod
+                  ? "bg-amber-950/90 text-amber-300 border-amber-500/80 font-semibold animate-pulse"
                   : vault.corpusFunded
-                    ? "bg-emerald-950/80 text-emerald-300 border-emerald-800"
-                    : "bg-amber-950/80 text-amber-300 border-amber-800"
+                  ? "bg-emerald-950/80 text-emerald-300 border-emerald-800"
+                  : "bg-amber-950/80 text-amber-300 border-amber-800"
               }`}
             >
               {isSuccessionTriggered
                 ? t.vault.status.successionTriggered
+                : isInGracePeriod
+                ? `Grace Period (${graceDaysRemaining}d remaining)`
                 : vault.corpusFunded
-                  ? t.vault.status.activeFunded
-                  : t.vault.status.pendingFunding}
+                ? t.vault.status.activeFunded
+                : t.vault.status.pendingFunding}
             </span>
           </div>
           <h1 className="product-title">{vault.name}</h1>
@@ -1022,6 +1046,39 @@ export function VaultView() {
               <strong>{t.vault.addressCard.activateLead}</strong>{" "}
               {t.vault.addressCard.activateBody}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* 28-Day Succession Grace Period Alert Banner */}
+      {isInGracePeriod && (
+        <div className="mb-6 p-4 rounded-xl bg-amber-950/60 border border-amber-500/80 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-amber-200">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-amber-900/80 border border-amber-600 text-amber-400 shrink-0">
+              <AlertTriangle size={20} className="animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <strong className="text-base font-semibold text-amber-100">
+                  28-Day Succession Grace Period Active
+                </strong>
+                <span className="px-2.5 py-0.5 text-xs rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono">
+                  {graceDaysRemaining} Days Remaining
+                </span>
+              </div>
+              <p className="text-xs text-amber-300/90 leading-relaxed max-w-2xl">
+                The 90-day heartbeat deadline has passed without a check-in. Succession is <strong>on hold</strong>. 
+                Vault assets remain locked and beneficiary claims are paused during this safety grace window.
+              </p>
+            </div>
+          </div>
+          {isGrantor && (
+            <button
+              className="button primary bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold shrink-0"
+              onClick={() => setDialog("heartbeat")}
+            >
+              <Heart size={15} /> I'm Alive — Check In Now
+            </button>
           )}
         </div>
       )}
@@ -1237,7 +1294,7 @@ export function VaultView() {
                   {vault.schedule.map((r, i) => {
                     const isPassed = new Date(r.date) <= new Date();
                     const isClaimed = !!r.claimed;
-                    const canClaim = (isPassed || isSuccessionTriggered) && isBeneficiary && !isClaimed;
+                    const canClaim = (isPassed || isSuccessionTriggered) && isBeneficiary && !isClaimed && !isInGracePeriod;
                     const fundedBalances = realTrust?.liveBalances.filter((b) => BigInt(b.balanceRaw) > 0n) || [];
                     const claimTokenSymbol = fundedBalances[0]?.token.symbol || "USDG";
 

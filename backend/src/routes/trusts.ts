@@ -39,7 +39,7 @@ trustsRouter.get("/", async (req: Request, res: Response) => {
     const result = await query(
       `SELECT id, name, grantor_address, beneficiary_address, vault_index, vault_address,
               status, is_revocable, corpus_funded, heartbeat_window_seconds,
-              last_heartbeat_at, heartbeat_deadline, created_at
+              last_heartbeat_at, heartbeat_deadline, grace_period_deadline, created_at
        FROM trusts
        ORDER BY created_at DESC
        LIMIT $1`,
@@ -106,20 +106,21 @@ trustsRouter.post("/", async (req: Request, res: Response) => {
     // 2. Encrypt letter if provided
     const encryptedLetter = cipherLetter || (letterToBeneficiary ? encryptText(letterToBeneficiary) : null);
 
-    // 3. Compute initial deadline
+    // 3. Compute initial deadline and 28-day grace period deadline
     const windowSecs = Math.max(300, parseInt(heartbeatWindowSeconds, 10) || 2592000); // minimum 5 mins
     const initialDeadline = new Date(Date.now() + windowSecs * 1000);
+    const initialGraceDeadline = new Date(initialDeadline.getTime() + 28 * 86400000);
 
     const insertTrustRes = await client.query(
       `INSERT INTO trusts (
         name, grantor_address, beneficiary_address, vault_index, vault_address,
         is_revocable, status, heartbeat_window_seconds, last_heartbeat_at,
-        heartbeat_deadline, encrypted_letter, terms_json, mode, terms_hash, cipher_terms, cipher_letter
+        heartbeat_deadline, grace_period_deadline, encrypted_letter, terms_json, mode, terms_hash, cipher_terms, cipher_letter
       ) VALUES (
         $1, $2, $3, $4, $5,
         $6, 'pending_funding', $7, NOW(),
-        $8, $9, $10, $11, $12, $13, $14
-      ) RETURNING id, created_at, status, heartbeat_deadline`,
+        $8, $9, $10, $11, $12, $13, $14, $15
+      ) RETURNING id, created_at, status, heartbeat_deadline, grace_period_deadline`,
       [
         name.trim(),
         cleanGrantor,
@@ -129,6 +130,7 @@ trustsRouter.post("/", async (req: Request, res: Response) => {
         isRevocable,
         windowSecs,
         initialDeadline,
+        initialGraceDeadline,
         encryptedLetter,
         JSON.stringify({
           guardiansCount: guardians.length,
@@ -200,6 +202,7 @@ trustsRouter.post("/", async (req: Request, res: Response) => {
         isRevocable,
         heartbeatWindowSeconds: windowSecs,
         heartbeatDeadline: initialDeadline,
+        gracePeriodDeadline: initialGraceDeadline,
         createdAt,
       },
       fundingInstructions: {
@@ -266,11 +269,25 @@ trustsRouter.get("/:id", async (req: Request, res: Response) => {
       }
     }
 
-    // Check dead-man's switch status
+    // Check dead-man's switch status & grace period
     const now = new Date();
     const deadline = trust.heartbeat_deadline ? new Date(trust.heartbeat_deadline) : null;
+    const graceDeadline = trust.grace_period_deadline
+      ? new Date(trust.grace_period_deadline)
+      : (deadline ? new Date(deadline.getTime() + 28 * 86400000) : null);
+
     const isSuccessionTriggered =
-      trust.status === "succession_triggered" || (deadline && now > deadline && trust.status === "active");
+      trust.status === "succession_triggered" || (graceDeadline && now > graceDeadline);
+
+    const isInGracePeriod =
+      !isSuccessionTriggered &&
+      (trust.status === "in_grace_period" || (deadline && now > deadline && graceDeadline && now <= graceDeadline && trust.status === "active"));
+
+    const computedStatus = isSuccessionTriggered
+      ? "succession_triggered"
+      : isInGracePeriod
+      ? "in_grace_period"
+      : trust.status;
 
     res.json({
       trust: {
@@ -280,13 +297,14 @@ trustsRouter.get("/:id", async (req: Request, res: Response) => {
         beneficiaryAddress: trust.beneficiary_address,
         vaultIndex: trust.vault_index,
         vaultAddress: trust.vault_address,
-        status: isSuccessionTriggered ? "succession_triggered" : trust.status,
+        status: computedStatus,
         isRevocable: trust.is_revocable,
         corpusFunded: trust.corpus_funded,
         depositTxHash: trust.deposit_tx_hash,
         heartbeatWindowSeconds: trust.heartbeat_window_seconds,
         lastHeartbeatAt: trust.last_heartbeat_at,
         heartbeatDeadline: trust.heartbeat_deadline,
+        gracePeriodDeadline: graceDeadline,
         hasEncryptedLetter: Boolean(trust.encrypted_letter),
         telegramLinked: Boolean(trust.telegram_chat_id),
         telegramAlertsEnabled: Boolean(trust.telegram_alerts_enabled),
@@ -321,7 +339,7 @@ trustsRouter.get("/grantor/:address", async (req: Request, res: Response) => {
     const result = await query(
       `SELECT id, name, grantor_address, beneficiary_address, vault_index, vault_address,
               status, is_revocable, corpus_funded, heartbeat_window_seconds,
-              last_heartbeat_at, heartbeat_deadline, created_at
+              last_heartbeat_at, heartbeat_deadline, grace_period_deadline, created_at
        FROM trusts
        WHERE LOWER(grantor_address) = LOWER($1)
        ORDER BY created_at DESC`,
@@ -355,7 +373,7 @@ trustsRouter.get("/beneficiary/:address", async (req: Request, res: Response) =>
     const result = await query(
       `SELECT id, name, grantor_address, beneficiary_address, vault_index, vault_address,
               status, is_revocable, corpus_funded, heartbeat_window_seconds,
-              last_heartbeat_at, heartbeat_deadline, created_at
+              last_heartbeat_at, heartbeat_deadline, grace_period_deadline, created_at
        FROM trusts
        WHERE LOWER(beneficiary_address) = LOWER($1)
        ORDER BY created_at DESC`,
@@ -422,6 +440,7 @@ trustsRouter.post("/:id/fund-verify", async (req: Request, res: Response) => {
 
     const windowSecs = parseInt(trust.heartbeat_window_seconds, 10) || 2592000;
     const newDeadline = new Date(Date.now() + windowSecs * 1000);
+    const newGraceDeadline = new Date(newDeadline.getTime() + 28 * 86400000);
 
     // Update status to active
     await query(
@@ -432,9 +451,10 @@ trustsRouter.post("/:id/fund-verify", async (req: Request, res: Response) => {
            deposit_verified_at = NOW(),
            last_heartbeat_at = NOW(),
            heartbeat_deadline = $2,
+           grace_period_deadline = $3,
            updated_at = NOW()
-       WHERE id = $3`,
-      [txHash || null, newDeadline, id]
+       WHERE id = $4`,
+      [txHash || null, newDeadline, newGraceDeadline, id]
     );
 
     res.json({
@@ -498,23 +518,29 @@ trustsRouter.post("/:id/heartbeat", async (req: Request, res: Response) => {
       [id, getAddress(grantorAddress), signature, parseInt(timestamp, 10)]
     );
 
-    // Extend heartbeat deadline
+    // Extend heartbeat deadline and reset grace period deadline
     const windowSecs = parseInt(trust.heartbeat_window_seconds, 10) || 2592000;
     const newDeadline = new Date(Date.now() + windowSecs * 1000);
+    const newGraceDeadline = new Date(newDeadline.getTime() + 28 * 86400000);
 
     const updateRes = await query(
       `UPDATE trusts
        SET last_heartbeat_at = NOW(),
            heartbeat_deadline = $1,
-           status = CASE WHEN status = 'succession_triggered' THEN 'active' ELSE status END,
+           grace_period_deadline = $2,
+           status = CASE WHEN status IN ('succession_triggered', 'in_grace_period') THEN 'active' ELSE status END,
            telegram_alert_sent_30d = FALSE,
            telegram_alert_sent_14d = FALSE,
            telegram_alert_sent_7d = FALSE,
            telegram_alert_sent_24h = FALSE,
+           telegram_alert_sent_grace_start = FALSE,
+           telegram_alert_sent_grace_14d = FALSE,
+           telegram_alert_sent_grace_7d = FALSE,
+           telegram_alert_sent_grace_24h = FALSE,
            updated_at = NOW()
-       WHERE id = $2
-       RETURNING last_heartbeat_at, heartbeat_deadline, status, telegram_chat_id, name`,
-      [newDeadline, id]
+       WHERE id = $3
+       RETURNING last_heartbeat_at, heartbeat_deadline, grace_period_deadline, status, telegram_chat_id, name`,
+      [newDeadline, newGraceDeadline, id]
     );
 
     const updatedRow = updateRes.rows[0];
@@ -530,10 +556,11 @@ trustsRouter.post("/:id/heartbeat", async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      message: "Heartbeat check-in confirmed. Dead-man's switch extended.",
+      message: "Heartbeat check-in confirmed. Dead-man's switch extended and trust restored to Active.",
       status: updatedRow.status,
       lastHeartbeatAt: updatedRow.last_heartbeat_at,
       heartbeatDeadline: updatedRow.heartbeat_deadline,
+      gracePeriodDeadline: updatedRow.grace_period_deadline,
     });
   } catch (err: any) {
     console.error("Error submitting heartbeat:", err);
@@ -579,7 +606,22 @@ trustsRouter.post("/:id/claim", async (req: Request, res: Response) => {
     // Check if succession is active OR schedule is unlocked
     const now = new Date();
     const deadline = trust.heartbeat_deadline ? new Date(trust.heartbeat_deadline) : null;
-    const isSuccession = trust.status === "succession_triggered" || (deadline && now > deadline);
+    const graceDeadline = trust.grace_period_deadline
+      ? new Date(trust.grace_period_deadline)
+      : (deadline ? new Date(deadline.getTime() + 28 * 86400000) : null);
+
+    const isSuccession = trust.status === "succession_triggered" || (graceDeadline && now > graceDeadline);
+    const isInGracePeriod =
+      !isSuccession &&
+      (trust.status === "in_grace_period" || (deadline && now > deadline && graceDeadline && now <= graceDeadline));
+
+    if (isInGracePeriod) {
+      res.status(400).json({
+        error: "Trust is currently in the 28-day Grace Period. Vault assets remain locked until the grace period expires without a grantor check-in.",
+        gracePeriodDeadline: graceDeadline,
+      });
+      return;
+    }
 
     let isEligible = isSuccession;
     let scheduleRow: any = null;
@@ -715,12 +757,16 @@ trustsRouter.get("/:id/letter", async (req: Request, res: Response) => {
     if (isBeneficiary) {
       const now = new Date();
       const deadline = trust.heartbeat_deadline ? new Date(trust.heartbeat_deadline) : null;
-      const isSuccession = trust.status === "succession_triggered" || (deadline && now > deadline);
+      const graceDeadline = trust.grace_period_deadline
+        ? new Date(trust.grace_period_deadline)
+        : (deadline ? new Date(deadline.getTime() + 28 * 86400000) : null);
+
+      const isSuccession = trust.status === "succession_triggered" || (graceDeadline && now > graceDeadline);
 
       // Beneficiaries can read letter if succession triggered OR trust is active
       if (!isSuccession && trust.status !== "active") {
         res.status(403).json({
-          error: "The letter remains sealed until the trust is active or succession is triggered.",
+          error: "The letter remains sealed while the trust is in Grace Period or before succession is triggered.",
         });
         return;
       }
@@ -774,6 +820,7 @@ trustsRouter.post("/:id/sealed-deposit", async (req: Request, res: Response) => 
     // Mark trust funded and active
     const windowSecs = parseInt(trust.heartbeat_window_seconds, 10) || 2592000;
     const newDeadline = new Date(Date.now() + windowSecs * 1000);
+    const newGraceDeadline = new Date(newDeadline.getTime() + 28 * 86400000);
 
     const primaryTxHash = result.swapTxHash || result.pullTxHash;
 
@@ -785,9 +832,10 @@ trustsRouter.post("/:id/sealed-deposit", async (req: Request, res: Response) => 
            deposit_verified_at = NOW(),
            last_heartbeat_at = NOW(),
            heartbeat_deadline = $2,
+           grace_period_deadline = $3,
            updated_at = NOW()
-       WHERE id = $3`,
-      [primaryTxHash, newDeadline, id]
+       WHERE id = $4`,
+      [primaryTxHash, newDeadline, newGraceDeadline, id]
     );
 
     res.json({

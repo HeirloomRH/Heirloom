@@ -70,13 +70,14 @@ export interface TrustDetail {
   beneficiaryAddress: string;
   vaultIndex: number;
   vaultAddress: string;
-  status: "pending_funding" | "active" | "succession_triggered" | "paused" | "completed";
+  status: "pending_funding" | "active" | "in_grace_period" | "succession_triggered" | "paused" | "completed";
   isRevocable: boolean;
   corpusFunded: boolean;
   depositTxHash: string | null;
   heartbeatWindowSeconds: number | string;
   lastHeartbeatAt: string;
   heartbeatDeadline: string;
+  gracePeriodDeadline?: string | null;
   hasEncryptedLetter: boolean;
   telegramLinked?: boolean;
   telegramAlertsEnabled?: boolean;

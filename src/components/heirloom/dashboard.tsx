@@ -155,6 +155,7 @@ export function Dashboard() {
       );
     }
     if (filter === "active") return trust.status === "active";
+    if (filter === "in_grace_period") return trust.status === "in_grace_period";
     if (filter === "pending_funding") return trust.status === "pending_funding";
     if (filter === "succession_triggered")
       return trust.status === "succession_triggered";
@@ -263,6 +264,7 @@ export function Dashboard() {
             </option>
           )}
           <option value="active">{t.dashboard.filters.active}</option>
+          <option value="in_grace_period">Grace Period (28d)</option>
           <option value="pending_funding">
             {t.dashboard.filters.pendingFunding}
           </option>
@@ -300,6 +302,8 @@ export function Dashboard() {
             const statusLabel =
               trust.status === "active"
                 ? t.dashboard.status.active
+                : trust.status === "in_grace_period"
+                ? "Grace Period (28d)"
                 : trust.status === "pending_funding"
                 ? t.dashboard.status.pendingFunding
                 : trust.status === "succession_triggered"
@@ -323,6 +327,8 @@ export function Dashboard() {
                     className={`vault-status ${
                       trust.status === "active"
                         ? "text-emerald-400 border-emerald-800/60 bg-emerald-950/30"
+                        : trust.status === "in_grace_period"
+                        ? "text-amber-300 border-amber-500/80 bg-amber-950/60 font-semibold animate-pulse"
                         : trust.status === "succession_triggered"
                         ? "text-rose-400 border-rose-800/60 bg-rose-950/30 font-semibold"
                         : trust.status === "pending_funding"
