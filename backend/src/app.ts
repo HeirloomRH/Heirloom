@@ -6,6 +6,7 @@ import { tokensRouter } from "./routes/tokens.js";
 import { trustsRouter } from "./routes/trusts.js";
 import { telegramRouter } from "./routes/telegram.js";
 import { privacyRouter } from "./routes/privacy.js";
+import { conciergeRouter } from "./routes/concierge.js";
 
 export const app = express();
 
@@ -32,6 +33,10 @@ app.use("/", privacyRouter);
 app.use("/api/telegram", telegramRouter);
 app.use("/telegram", telegramRouter);
 
+// Orbio-powered concierge (setup/heartbeat/beneficiary Q&A on studio CREDIT)
+app.use("/api/concierge", conciergeRouter);
+app.use("/concierge", conciergeRouter);
+
 // Root informational endpoint
 app.get("/", (_req, res) => {
   res.json({
@@ -53,6 +58,7 @@ app.get("/", (_req, res) => {
       private: "/api/private",
       solvency: "/api/proofs/solvency",
       migration: "/api/migration/status",
+      concierge: "/api/concierge",
     },
   });
 });

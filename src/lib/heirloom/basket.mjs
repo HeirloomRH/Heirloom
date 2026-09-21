@@ -13,7 +13,15 @@ export const BPS_DENOMINATOR = 10000n;
 /** Router leg outcomes, in the order the UI prefers to show them. */
 export const ROUTE_PASSTHROUGH = "passthrough";
 export const ROUTE_SWAP = "swap";
+export const ROUTE_CREDIT = "credit";
 export const ROUTE_FALLBACK = "fallback";
+
+/**
+ * Symbol reserved for the Orbio CREDIT leg. A leg with this symbol never
+ * touches a Uniswap pool — it routes through the Orbio Exchange instead, so
+ * it is planned separately from ordinary equity legs.
+ */
+export const CREDIT_SYMBOL = "CREDIT";
 
 /**
  * Split `totalWei` across `legs` by basis points, losing nothing to rounding.
@@ -118,7 +126,8 @@ export function planBasketDeposit({
     const quotedOut = quote && quote.liquid !== false ? BigInt(quote.amountOut) : null;
 
     let route = ROUTE_SWAP;
-    if (leg.symbol === inputSymbol) route = ROUTE_PASSTHROUGH;
+    if (leg.symbol === CREDIT_SYMBOL) route = ROUTE_CREDIT;
+    else if (leg.symbol === inputSymbol) route = ROUTE_PASSTHROUGH;
     else if (quotedOut === null || quotedOut <= 0n) route = ROUTE_FALLBACK;
 
     return {
@@ -162,6 +171,16 @@ export function planBasketDeposit({
     });
   }
 
+  // CREDIT never goes through a Uniswap pool, so it is kept out of `swaps`
+  // (the Uniswap multicall input) and reported separately for the Orbio leg.
+  const creditLegs = planned
+    .filter((leg) => leg.route === ROUTE_CREDIT)
+    .map((leg) => ({
+      symbol: leg.symbol,
+      amountIn: leg.amountIn,
+      minOut: leg.minOut,
+    }));
+
   const fallbackLegs = planned.filter((leg) => leg.route === ROUTE_FALLBACK);
   if (fallbackLegs.length > 0 && fallbackSymbol !== inputSymbol) {
     const amountIn = fallbackLegs.reduce((sum, leg) => sum + leg.amountIn, 0n);
@@ -202,6 +221,7 @@ export function planBasketDeposit({
     totalWei: total,
     legs: planned,
     swaps,
+    creditLegs,
     // Input that never touches a pool and is transferred to the vault as-is.
     passthroughWei: passthrough,
     routedWei: swaps.reduce((sum, swap) => sum + swap.amountIn, 0n),

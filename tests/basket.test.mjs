@@ -6,6 +6,7 @@ import {
   validateSlippageBps,
   validateBasketLegs,
   planBasketDeposit,
+  CREDIT_SYMBOL,
 } from "../src/lib/heirloom/basket.mjs";
 
 const ONE_ETH = 10n ** 18n;
@@ -263,8 +264,8 @@ test("USDG input splits cleanly in 6 decimals and marks USDG leg as passthrough"
     legs: SAMPLE_LEGS, // 40% SPCX, 35% AAPL, 25% USDG
     quotes: {
       SPCX: { amountOut: 10_000_000_000_000_000_000n }, // 10 SPCX
-      AAPL: { amountOut: 1_000_000_000_000_000_000n },  // 1 AAPL
-      USDG: { amountOut: 125_000_000n },                 // 125 USDG
+      AAPL: { amountOut: 1_000_000_000_000_000_000n }, // 1 AAPL
+      USDG: { amountOut: 125_000_000n }, // 125 USDG
     },
     slippageBps: 100,
     inputSymbol: "USDG",
@@ -275,7 +276,7 @@ test("USDG input splits cleanly in 6 decimals and marks USDG leg as passthrough"
   assert.equal(plan.inputSymbol, "USDG");
   assert.equal(plan.totalWei, FIVE_HUNDRED_USDG);
   assert.equal(plan.passthroughWei, 125_000_000n); // 25% of 500
-  assert.equal(plan.routedWei, 375_000_000n);      // 75% of 500
+  assert.equal(plan.routedWei, 375_000_000n); // 75% of 500
 
   // 2 swaps (SPCX and AAPL), 1 passthrough (USDG)
   assert.equal(plan.swaps.length, 2);
@@ -321,3 +322,62 @@ test("USDG input with illiquid equity leg retains input USDG without redundant s
   assert.equal(plan.fullyQuoted, true);
 });
 
+test("a CREDIT leg is planned separately from the Uniswap swap set", () => {
+  const legs = [
+    { symbol: "SPCX", bps: 4000, tokenAddress: "0x4a0E", decimals: 18 },
+    { symbol: "AAPL", bps: 4000, tokenAddress: "0xaF3D", decimals: 18 },
+    { symbol: CREDIT_SYMBOL, bps: 2000 },
+  ];
+  const FIVE_HUNDRED_USDG = 500_000_000n;
+  const plan = planBasketDeposit({
+    totalWei: FIVE_HUNDRED_USDG,
+    legs,
+    quotes: {
+      SPCX: { amountOut: 200_000_000n },
+      AAPL: { amountOut: 200_000_000n },
+      [CREDIT_SYMBOL]: { amountOut: 100_000_000n },
+    },
+    slippageBps: 100,
+    inputSymbol: "USDG",
+  });
+
+  assert.equal(plan.error, "");
+  assert.equal(plan.fullyQuoted, true);
+
+  const creditLeg = plan.legs.find((l) => l.symbol === CREDIT_SYMBOL);
+  assert.equal(creditLeg.route, "credit");
+  assert.equal(creditLeg.amountIn, 100_000_000n);
+  assert.equal(creditLeg.minOut, 99_000_000n); // 1% slippage off the 100 USDG quote
+
+  // CREDIT never enters the Uniswap swap set — it has its own list.
+  assert.equal(
+    plan.swaps.some((s) => s.symbol === CREDIT_SYMBOL),
+    false,
+  );
+  assert.equal(plan.swaps.length, 2);
+  assert.equal(plan.creditLegs.length, 1);
+  assert.deepEqual(plan.creditLegs[0], {
+    symbol: CREDIT_SYMBOL,
+    amountIn: 100_000_000n,
+    minOut: 99_000_000n,
+  });
+});
+
+test("a CREDIT leg with no quote blocks execution instead of guessing a price", () => {
+  const legs = [
+    { symbol: "SPCX", bps: 8000, tokenAddress: "0x4a0E", decimals: 18 },
+    { symbol: CREDIT_SYMBOL, bps: 2000 },
+  ];
+  const plan = planBasketDeposit({
+    totalWei: 1_000_000_000n,
+    legs,
+    quotes: { SPCX: { amountOut: 800_000_000n } }, // no CREDIT quote
+    inputSymbol: "USDG",
+  });
+
+  assert.equal(plan.error, "");
+  const creditLeg = plan.legs.find((l) => l.symbol === CREDIT_SYMBOL);
+  assert.equal(creditLeg.route, "credit");
+  assert.equal(creditLeg.minOut, null);
+  assert.equal(plan.fullyQuoted, false);
+});
