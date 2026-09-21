@@ -15,15 +15,17 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { SiteHeader, SiteFooter } from "../components/heirloom/chrome";
+import { I18nProvider, useT } from "../lib/i18n";
 
 function NotFoundComponent() {
+  const t = useT();
   return (
     <main id="main" className="shell empty-state">
-      <p className="eyebrow">404 / A LITTLE OFF THE PATH</p>
-      <h1 className="product-title">Let’s find your way back.</h1>
-      <p>This page isn’t part of the plan.</p>
+      <p className="eyebrow">{t.common.notFound.eyebrow}</p>
+      <h1 className="product-title">{t.common.notFound.title}</h1>
+      <p>{t.common.notFound.body}</p>
       <Link className="button primary" to="/">
-        Back to Heirloom
+        {t.common.notFound.cta}
       </Link>
     </main>
   );
@@ -31,6 +33,7 @@ function NotFoundComponent() {
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
+  const t = useT();
   const router = useRouter();
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
@@ -40,10 +43,10 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
+          {t.common.error.title}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
+          {t.common.error.body}
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
@@ -53,13 +56,13 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
             }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Try again
+            {t.common.error.retry}
           </button>
           <a
             href="/"
             className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
           >
-            Go home
+            {t.common.error.goHome}
           </a>
         </div>
       </div>
@@ -109,10 +112,19 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        {children}
+        <I18nProvider>{children}</I18nProvider>
         <Scripts />
       </body>
     </html>
+  );
+}
+
+function SkipLink() {
+  const t = useT();
+  return (
+    <a className="skip" href="#main">
+      {t.common.skipToContent}
+    </a>
   );
 }
 
@@ -132,9 +144,7 @@ function RootComponent() {
             overlayBlur: "small",
           })}
         >
-          <a className="skip" href="#main">
-            Skip to content
-          </a>
+          <SkipLink />
           <SiteHeader />
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           <Outlet />

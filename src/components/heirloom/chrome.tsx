@@ -4,6 +4,8 @@ import { useState, useEffect, useId } from "react";
 import { ArrowUpRight, Menu, X } from "lucide-react";
 import { ConnectButton } from "../wallet/ConnectButton";
 import { ContractAddressBadge } from "./contract-address-badge";
+import { LanguageToggle } from "./language-toggle";
+import { useT } from "@/lib/i18n";
 export function Mark({ className = "" }: { className?: string }) {
   const maskId = useId();
   return (
@@ -38,15 +40,17 @@ export function Mark({ className = "" }: { className?: string }) {
 }
 
 export function Brand() {
+  const t = useT();
   return (
     <span className="brand">
       <Mark />
-      <span>heirloom</span>
+      <span>{t.common.brand}</span>
     </span>
   );
 }
 
 export function SiteHeader() {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const path = useRouterState({ select: (s) => s.location.pathname });
   useEffect(() => {
@@ -61,42 +65,43 @@ export function SiteHeader() {
       <div className="shell nav-inner">
         <Link
           to="/"
-          aria-label="Heirloom home"
+          aria-label={t.common.nav.home}
           onClick={() => setOpen(false)}
         >
           <Brand />
         </Link>
         <nav
           className={open ? "nav-links open" : "nav-links"}
-          aria-label="Main navigation"
+          aria-label={t.common.nav.mainNavigation}
         >
           <Link to="/" hash="how-it-works" onClick={() => setOpen(false)}>
-            How it works
+            {t.common.nav.howItWorks}
           </Link>
           <Link
             className={path === "/docs" ? "active" : ""}
             to="/docs"
             onClick={() => setOpen(false)}
           >
-            Docs
+            {t.common.nav.docs}
           </Link>
           <Link
             className={path === "/whitepaper" ? "active" : ""}
             to="/whitepaper"
             onClick={() => setOpen(false)}
           >
-            Whitepaper
+            {t.common.nav.whitepaper}
           </Link>
           <Link
             className={path === "/roadmap" ? "active" : ""}
             to="/roadmap"
             onClick={() => setOpen(false)}
           >
-            Roadmap
+            {t.common.nav.roadmap}
           </Link>
           <Link className="nav-app" to="/app" onClick={() => setOpen(false)}>
-            Open app <ArrowUpRight size={15} />
+            {t.common.nav.openApp} <ArrowUpRight size={15} />
           </Link>
+          <LanguageToggle className="nav-lang" />
           <div className="hidden sm:inline-block">
             <ConnectButton />
           </div>
@@ -106,7 +111,7 @@ export function SiteHeader() {
         </div>
         <button
           className="menu-toggle icon-button"
-          aria-label={open ? "Close menu" : "Open menu"}
+          aria-label={open ? t.common.nav.closeMenu : t.common.nav.openMenu}
           aria-expanded={open}
           onClick={() => setOpen(!open)}
         >
@@ -117,37 +122,38 @@ export function SiteHeader() {
   );
 }
 export function SiteFooter() {
+  const t = useT();
   return (
     <footer className="site-footer">
       <div className="shell">
         <div className="footer-top">
-          <Link to="/" aria-label="Heirloom home">
+          <Link to="/" aria-label={t.common.nav.home}>
             <Brand />
           </Link>
           <div>
-            <Link to="/docs">Documentation</Link>
-            <Link to="/whitepaper">Whitepaper</Link>
-            <Link to="/roadmap">Roadmap</Link>
+            <Link to="/docs">{t.common.footer.documentation}</Link>
+            <Link to="/whitepaper">{t.common.footer.whitepaper}</Link>
+            <Link to="/roadmap">{t.common.footer.roadmap}</Link>
             <a
               href="https://x.com/heirloomrh"
               target="_blank"
               rel="noopener noreferrer"
-              title="Heirloom on X"
+              title={t.common.footer.twitterTitle}
             >
-              Twitter / X
+              {t.common.footer.twitter}
             </a>
             <a
               href="https://t.me/heirloomportal"
               target="_blank"
               rel="noopener noreferrer"
-              title="Telegram Community"
+              title={t.common.footer.telegramTitle}
             >
-              Telegram
+              {t.common.footer.telegram}
             </a>
-            <Link to="/docs" hash="boundaries">Risks & boundaries</Link>
+            <Link to="/docs" hash="boundaries">{t.common.footer.risks}</Link>
           </div>
           <Link to="/create">
-            Build your legacy <ArrowUpRight size={15} />
+            {t.common.footer.buildLegacy} <ArrowUpRight size={15} />
           </Link>
         </div>
 
@@ -158,19 +164,14 @@ export function SiteFooter() {
 
         <div className="footer-word" aria-hidden="true">
           <Mark />
-          <span>heirloom</span>
+          <span>{t.common.brand}</span>
         </div>
         <div className="footer-bottom">
-          <span>© 2026 Heirloom</span>
-          <span>Made for what comes next.</span>
-          <span>Designed for Robinhood Chain ↗</span>
+          <span>{t.common.footer.copyright}</span>
+          <span>{t.common.footer.tagline}</span>
+          <span>{t.common.footer.chain}</span>
         </div>
-        <p className="fine-print">
-          Frontend preview. No funds are deposited or managed here. Heirloom
-          describes programmable vaults, not a statutory legal trust. Stock
-          Tokens are tokenised debt securities; access is subject to eligibility
-          and jurisdiction. Capital is at risk.
-        </p>
+        <p className="fine-print">{t.common.footer.finePrint}</p>
       </div>
     </footer>
   );
