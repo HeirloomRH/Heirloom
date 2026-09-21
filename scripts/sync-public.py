@@ -27,7 +27,7 @@ LOCAL_EXPORT_REF = "public-main"
 
 # Attribution trailers stripped from every commit message in the public mirror.
 DROP_LINE_PREFIXES = (
-    b"co-authored-by: claude",
+    b"co-authored-by:",
     b"claude-session:",
 )
 DROP_LINE_SUBSTRINGS = (
