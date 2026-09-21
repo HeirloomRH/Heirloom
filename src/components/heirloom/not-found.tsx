@@ -1,12 +1,14 @@
 import { Link } from "@tanstack/react-router";
+import { useT } from "@/lib/i18n";
 export default function NotFound() {
+  const t = useT();
   return (
     <main id="main" className="shell empty-state">
-      <p className="eyebrow">404 / A LITTLE OFF THE PATH</p>
-      <h1 className="product-title">Let’s find your way back.</h1>
-      <p>This page isn’t part of the plan.</p>
+      <p className="eyebrow">{t.common.notFound.eyebrow}</p>
+      <h1 className="product-title">{t.common.notFound.title}</h1>
+      <p>{t.common.notFound.body}</p>
       <Link className="button primary" to="/">
-        Back to Heirloom
+        {t.common.notFound.cta}
       </Link>
     </main>
   );
