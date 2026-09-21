@@ -26,6 +26,7 @@ import {
 } from "../services/sealedDepositService.js";
 import { buildStartLink } from "../lib/telegram.js";
 import { sendCheckinConfirmation } from "../services/telegramAlertService.js";
+import { parseUnits } from "viem";
 
 export const trustsRouter = Router();
 
@@ -834,6 +835,115 @@ trustsRouter.post("/:id/sealed-deposit", async (req: Request, res: Response) => 
       error: "Failed to execute sealed basket deposit",
       details: err?.shortMessage || err?.message || String(err),
     });
+  }
+});
+
+/**
+ * POST /api/trusts/:id/legs/inference
+ * Grantor configures a recurring CREDIT allowance: usdgPerCycle spent every
+ * cadenceDays, activated straight to the beneficiary's Orbio key, until
+ * totalUsdg is exhausted. Push-executed by inferenceReleaseWorker — nothing
+ * for the beneficiary to claim.
+ */
+trustsRouter.post("/:id/legs/inference", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { grantorAddress, usdgPerCycle, cadenceDays, totalUsdg, beneficiaryAddress } = req.body;
+
+    if (!grantorAddress || !usdgPerCycle || !cadenceDays || !totalUsdg) {
+      res.status(400).json({
+        error: "grantorAddress, usdgPerCycle, cadenceDays, and totalUsdg are required",
+      });
+      return;
+    }
+    const cadence = parseInt(cadenceDays, 10);
+    if (!Number.isInteger(cadence) || cadence < 1) {
+      res.status(400).json({ error: "cadenceDays must be a whole number of at least 1" });
+      return;
+    }
+
+    const trustRes = await query("SELECT * FROM trusts WHERE id = $1", [id]);
+    if (trustRes.rows.length === 0) {
+      res.status(404).json({ error: "Trust not found" });
+      return;
+    }
+    const trust = trustRes.rows[0];
+
+    if (trust.grantor_address.toLowerCase() !== grantorAddress.toLowerCase()) {
+      res
+        .status(403)
+        .json({ error: "Only the designated grantor can configure an inference allowance" });
+      return;
+    }
+    if (trust.vault_index === null || trust.vault_index === undefined) {
+      res.status(400).json({ error: "Trust has no dedicated vault yet" });
+      return;
+    }
+
+    const beneficiary = beneficiaryAddress || trust.beneficiary_address;
+    if (!isAddress(beneficiary)) {
+      res.status(400).json({ error: "beneficiaryAddress is not a valid address" });
+      return;
+    }
+
+    const usdgPerCycleAtomic = parseUnits(String(usdgPerCycle), 6);
+    const totalUsdgAtomic = parseUnits(String(totalUsdg), 6);
+    if (usdgPerCycleAtomic <= 0n || totalUsdgAtomic <= 0n) {
+      res.status(400).json({ error: "usdgPerCycle and totalUsdg must be greater than 0" });
+      return;
+    }
+    if (usdgPerCycleAtomic > totalUsdgAtomic) {
+      res.status(400).json({ error: "usdgPerCycle cannot exceed totalUsdg" });
+      return;
+    }
+
+    const insertRes = await query(
+      `INSERT INTO inference_release_schedules
+         (trust_id, beneficiary_address, usdg_per_cycle_atomic, cadence_days, next_release_at, total_remaining_atomic)
+       VALUES ($1, $2, $3, $4, NOW(), $5)
+       RETURNING id, next_release_at`,
+      [
+        id,
+        getAddress(beneficiary),
+        usdgPerCycleAtomic.toString(),
+        cadence,
+        totalUsdgAtomic.toString(),
+      ],
+    );
+
+    res.json({
+      success: true,
+      scheduleId: insertRes.rows[0].id,
+      nextReleaseAt: insertRes.rows[0].next_release_at,
+      message: `Inference allowance configured: ${usdgPerCycle} USDG every ${cadence} day(s), ${totalUsdg} USDG total.`,
+    });
+  } catch (err) {
+    console.error("Error configuring inference leg:", err);
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: "Failed to configure inference allowance", details: message });
+  }
+});
+
+/**
+ * GET /api/trusts/:id/legs/inference
+ * List configured inference allowances and their release history for a trust.
+ */
+trustsRouter.get("/:id/legs/inference", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const schedules = await query(
+      "SELECT * FROM inference_release_schedules WHERE trust_id = $1 ORDER BY created_at ASC",
+      [id],
+    );
+    const releases = await query(
+      "SELECT * FROM inference_releases WHERE trust_id = $1 ORDER BY created_at DESC LIMIT 50",
+      [id],
+    );
+    res.json({ schedules: schedules.rows, releases: releases.rows });
+  } catch (err) {
+    console.error("Error fetching inference legs:", err);
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: "Failed to fetch inference allowances", details: message });
   }
 });
 

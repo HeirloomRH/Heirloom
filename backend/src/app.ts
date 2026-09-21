@@ -7,6 +7,8 @@ import { trustsRouter } from "./routes/trusts.js";
 import { telegramRouter } from "./routes/telegram.js";
 import { privacyRouter } from "./routes/privacy.js";
 import { conciergeRouter } from "./routes/concierge.js";
+import { beneficiaryRouter } from "./routes/beneficiary.js";
+import { orbioRouter } from "./routes/orbio.js";
 
 export const app = express();
 
@@ -37,6 +39,14 @@ app.use("/telegram", telegramRouter);
 app.use("/api/concierge", conciergeRouter);
 app.use("/concierge", conciergeRouter);
 
+// Beneficiary Orbio activation key registration
+app.use("/api/beneficiary", beneficiaryRouter);
+app.use("/beneficiary", beneficiaryRouter);
+
+// Orbio CREDIT quotes (also mounted under /api/trusts/:id/legs/inference)
+app.use("/api/orbio", orbioRouter);
+app.use("/orbio", orbioRouter);
+
 // Root informational endpoint
 app.get("/", (_req, res) => {
   res.json({
@@ -59,7 +69,8 @@ app.get("/", (_req, res) => {
       solvency: "/api/proofs/solvency",
       migration: "/api/migration/status",
       concierge: "/api/concierge",
+      beneficiaryKey: "/api/beneficiary/key",
+      orbioQuote: "/api/orbio/quote",
     },
   });
 });
-

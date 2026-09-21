@@ -124,6 +124,25 @@ export const orbioExchangeAbi = [
     ],
     outputs: [{ name: "creditOut", type: "uint256" }],
   },
+  {
+    // Input signature (usdgIn, minCreditOut, beneficiary, maxFills) confirmed
+    // against the deployed implementation's bytecode selector 0x6ebadb6e,
+    // matching the integration spec exactly for this one function. Burns
+    // CREDIT directly into the beneficiary key's activated API balance — no
+    // transferable token, nothing to verify via balanceOf. The exact output
+    // type is unconfirmed but irrelevant: callers only check receipt.status,
+    // never decode a return value from this call.
+    name: "buyAndActivate",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "usdgIn", type: "uint256" },
+      { name: "minCreditOut", type: "uint256" },
+      { name: "beneficiary", type: "bytes32" },
+      { name: "maxFills", type: "uint256" },
+    ],
+    outputs: [{ name: "creditOut", type: "uint256" }],
+  },
 ] as const;
 
 /**

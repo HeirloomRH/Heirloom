@@ -50,6 +50,12 @@ export const config = {
     process.env.OPERATOR_PRIVATE_KEY ||
     "",
 
+  // How often the inference-release worker polls for due CREDIT allowance
+  // releases (push, not pull — see inferenceReleaseWorker.ts). Same idiom as
+  // ORBIO_QUOTE_TOLERANCE_BPS above; the heartbeat worker's interval is still
+  // hardcoded in index.ts, this one isn't.
+  inferenceReleaseIntervalMs: parseInt(process.env.INFERENCE_RELEASE_INTERVAL_MS || "60000", 10),
+
   // Telegram Bot
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || "",
   telegramBotUsername: (process.env.TELEGRAM_BOT_USERNAME || "@HeirloomRHBot").replace(/^@/, ""),
