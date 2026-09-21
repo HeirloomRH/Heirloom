@@ -171,6 +171,22 @@ export const vault: typeof EnVault = {
     approvalSubmitted: "USDG 授权交易已提交至 Robinhood Chain……",
     approvalSuccess: "USDG 授权成功！",
 
+    sealedExecutionLabel: "执行隐私",
+    sealedExecutionPublic: "公开多重调用",
+    sealedExecutionDarkpool: "加密中继（暗池模式）",
+    sealedExecutionDarkpoolHint:
+      "隐藏您的钱包身份。通过链下 Permit2 签名授权，并由 Heirloom 中继器在链上直接结算交付至信托金库。",
+
+    approvePermit2: "授权 Permit2",
+    approvingPermit2: "正在授权 Permit2……",
+    permit2ApprovalSubmitted: "Permit2 授权交易已提交至 Robinhood Chain……",
+    permit2ApprovalSuccess: "USDG 已成功授权至 Permit2！",
+
+    signSealedDeposit: "签名并进行加密存入",
+    signingSealedDeposit: "正在请求 Permit2 签名……",
+    relayingSealedDeposit: "Heirloom 中继器正在链上执行……",
+    relayerUnavailable: "Heirloom 中继器暂时离线，请使用公开多重调用模式。",
+
     slippageLabel: "滑点容忍度",
     slippageHint:
       "若某一腿无法在该容忍度内成交，将转为兑换 USDG，而不会导致整笔存入回滚。",

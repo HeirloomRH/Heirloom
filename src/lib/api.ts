@@ -257,3 +257,78 @@ export async function fetchLetter(trustId: string, requesterAddress: string): Pr
   }
   return data;
 }
+
+export interface RelayerInfoResponse {
+  relayerAddress: `0x${string}` | null;
+  permit2Address: `0x${string}`;
+  usdgAddress: `0x${string}`;
+  routerAddress: `0x${string}`;
+  network: string;
+  chainId: number;
+  isLive: boolean;
+}
+
+/**
+ * Discover the active Heirloom Relayer address on Robinhood Chain
+ */
+export async function fetchRelayerInfo(): Promise<RelayerInfoResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/trusts/relayer-info`);
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to fetch relayer info");
+  }
+  return data;
+}
+
+export interface SealedDepositSubmission {
+  permit: {
+    permitted: {
+      token: string;
+      amount: string;
+    };
+    nonce: string;
+    deadline: string;
+  };
+  signature: `0x${string}`;
+  owner: string;
+  legs: Array<{
+    symbol: string;
+    tokenAddress: string;
+    amountIn: string;
+    minOut: string;
+    fee: number;
+  }>;
+  passthroughWei: string;
+}
+
+export interface SealedDepositResult {
+  success: boolean;
+  message: string;
+  txHashes: {
+    pullTxHash: `0x${string}`;
+    swapTxHash?: `0x${string}`;
+    transferTxHash?: `0x${string}`;
+  };
+  vaultAddress: string;
+  corpusFunded: boolean;
+}
+
+/**
+ * Submit a signed Permit2 authorization to the Heirloom Relayer for sealed execution
+ */
+export async function submitSealedDeposit(
+  trustId: string,
+  payload: SealedDepositSubmission
+): Promise<SealedDepositResult> {
+  const res = await fetch(`${API_BASE_URL}/api/trusts/${trustId}/sealed-deposit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.details || data.error || "Sealed basket deposit failed");
+  }
+  return data;
+}

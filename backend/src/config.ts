@@ -16,6 +16,10 @@ export const config = {
   encryptionKey: process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
   protocolFeeWallet: process.env.PROTOCOL_FEE_WALLET || "0xAa780beBe4Aa01AA435E538f8A810C202850b727",
   
+  // Relayer & Operator Wallets
+  relayerPrivateKey: process.env.RELAYER_PRIVATE_KEY || process.env.OPERATOR_PRIVATE_KEY || "",
+  operatorPrivateKey: process.env.OPERATOR_PRIVATE_KEY || "",
+
   // Frontend Origin for CORS
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:5173",
 };

@@ -174,6 +174,22 @@ export const vault = {
     approvalSubmitted: "USDG approval transaction submitted to Robinhood Chain…",
     approvalSuccess: "USDG approved for SwapRouter!",
 
+    sealedExecutionLabel: "Execution Privacy",
+    sealedExecutionPublic: "Public Multicall",
+    sealedExecutionDarkpool: "Sealed Relayer (Darkpool)",
+    sealedExecutionDarkpoolHint:
+      "Shields your wallet identity. Authorized via off-chain Permit2 signature and settled on-chain by the Heirloom Relayer straight to your vault.",
+
+    approvePermit2: "Approve Permit2",
+    approvingPermit2: "Approving Permit2…",
+    permit2ApprovalSubmitted: "Permit2 approval submitted to Robinhood Chain…",
+    permit2ApprovalSuccess: "USDG approved for Permit2!",
+
+    signSealedDeposit: "Sign & Sealed Deposit",
+    signingSealedDeposit: "Requesting Permit2 signature…",
+    relayingSealedDeposit: "Heirloom Relayer executing on Robinhood Chain…",
+    relayerUnavailable: "The Heirloom Relayer is temporarily offline. Please use public multicall.",
+
     slippageLabel: "Slippage tolerance",
     slippageHint:
       "If a leg cannot fill within this tolerance it converts to USDG instead of reverting your whole deposit.",

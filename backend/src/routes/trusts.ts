@@ -18,6 +18,11 @@ import {
 } from "../lib/robinhoodTokens.js";
 import { config } from "../config.js";
 import { getAddress, isAddress } from "viem";
+import {
+  getRelayerInfo,
+  executeSealedBasketDeposit,
+  type SealedDepositPayload,
+} from "../services/sealedDepositService.js";
 
 export const trustsRouter = Router();
 
@@ -205,6 +210,14 @@ trustsRouter.post("/", async (req: Request, res: Response) => {
   } finally {
     client.release();
   }
+});
+
+/**
+ * GET /api/trusts/relayer-info
+ * Returns public relayer discovery information and addresses
+ */
+trustsRouter.get("/relayer-info", (_req: Request, res: Response) => {
+  res.json(getRelayerInfo());
 });
 
 /**
@@ -695,5 +708,72 @@ trustsRouter.get("/:id/letter", async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error("Error decrypting letter:", err);
     res.status(500).json({ error: "Failed to read letter", details: err.message });
+  }
+});
+
+/**
+ * POST /api/trusts/:id/sealed-deposit
+ * Executes a sealed basket deposit via Permit2 and the Heirloom Relayer
+ */
+trustsRouter.post("/:id/sealed-deposit", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const payload = req.body as SealedDepositPayload;
+
+    if (!payload?.permit || !payload?.signature || !payload?.owner) {
+      res.status(400).json({ error: "Missing required fields: permit, signature, and owner are required" });
+      return;
+    }
+
+    const trustRes = await query("SELECT * FROM trusts WHERE id = $1", [id]);
+    if (trustRes.rows.length === 0) {
+      res.status(404).json({ error: "Trust not found" });
+      return;
+    }
+
+    const trust = trustRes.rows[0];
+    if (!trust.vault_address) {
+      res.status(400).json({ error: "Trust does not have an assigned vault address" });
+      return;
+    }
+
+    // Execute through sealed relayer
+    const result = await executeSealedBasketDeposit({
+      vaultAddress: trust.vault_address as `0x${string}`,
+      payload,
+    });
+
+    // Mark trust funded and active
+    const windowSecs = parseInt(trust.heartbeat_window_seconds, 10) || 2592000;
+    const newDeadline = new Date(Date.now() + windowSecs * 1000);
+
+    const primaryTxHash = result.swapTxHash || result.pullTxHash;
+
+    await query(
+      `UPDATE trusts
+       SET corpus_funded = TRUE,
+           status = 'active',
+           deposit_tx_hash = $1,
+           deposit_verified_at = NOW(),
+           last_heartbeat_at = NOW(),
+           heartbeat_deadline = $2,
+           updated_at = NOW()
+       WHERE id = $3`,
+      [primaryTxHash, newDeadline, id]
+    );
+
+    res.json({
+      success: true,
+      message: "Sealed basket deposit executed successfully on Robinhood Chain",
+      txHashes: result,
+      vaultAddress: trust.vault_address,
+      corpusFunded: true,
+    });
+  } catch (err: any) {
+    console.error("Error executing sealed deposit:", err);
+    res.status(500).json({
+      error: "Failed to execute sealed basket deposit",
+      details: err?.shortMessage || err?.message || String(err),
+    });
   }
 });

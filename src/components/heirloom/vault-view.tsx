@@ -24,6 +24,8 @@ import {
   LockOpen,
   Calendar,
   Split,
+  EyeOff,
+  Shield,
 } from "lucide-react";
 import { useAccount, useSignTypedData, useWriteContract, useWaitForTransactionReceipt, useReadContract, useBalance, usePublicClient } from "wagmi";
 import { parseUnits, parseEther, formatUnits, formatEther, erc20Abi } from "viem";
@@ -33,7 +35,10 @@ import {
   verifyFunding,
   claimVesting,
   fetchLetter,
+  fetchRelayerInfo,
+  submitSealedDeposit,
   type TrustResponse,
+  type RelayerInfoResponse,
 } from "@/lib/api";
 import { ROBINHOOD_CHAIN_ID, ROBINHOOD_EXPLORER_URL } from "@/lib/chain";
 import { DemoNotice, Dialog } from "./product";
@@ -61,6 +66,11 @@ import {
   USDG_ADDRESS,
   type RouterAvailability,
 } from "@/lib/heirloom/swap-router";
+import {
+  PERMIT2_ADDRESS,
+  buildPermit2ApprovalRequest,
+  buildPermit2TypedData,
+} from "@/lib/heirloom/permit2";
 
 
 // Tab identity is a stable key; only the label is translated.
@@ -142,6 +152,10 @@ export function VaultView() {
   const [basketQuotes, setBasketQuotes] = useState<Record<string, BasketQuote>>({});
   const [quoting, setQuoting] = useState(false);
   const [approvingUsdg, setApprovingUsdg] = useState(false);
+  const [sealedExecution, setSealedExecution] = useState(false);
+  const [relayerInfo, setRelayerInfo] = useState<RelayerInfoResponse | null>(null);
+  const [approvingPermit2, setApprovingPermit2] = useState(false);
+  const [isRelaying, setIsRelaying] = useState(false);
 
   const publicClient = usePublicClient({ chainId: ROBINHOOD_CHAIN_ID });
 
@@ -173,9 +187,29 @@ export function VaultView() {
     },
   });
 
+  const { data: usdgPermit2AllowanceRaw, refetch: refetchPermit2Allowance } = useReadContract({
+    address: USDG_ADDRESS,
+    abi: erc20Abi,
+    functionName: "allowance",
+    args: address ? [address, PERMIT2_ADDRESS] : undefined,
+    chainId: ROBINHOOD_CHAIN_ID,
+    query: {
+      enabled: !!address,
+    },
+  });
+
   const usdgBalance =
     usdgBalanceRaw !== undefined ? formatUnits(usdgBalanceRaw, 6) : "0";
   const usdgAllowance = usdgAllowanceRaw ?? 0n;
+  const usdgPermit2Allowance = usdgPermit2AllowanceRaw ?? 0n;
+
+  useEffect(() => {
+    if (dialog === "deposit") {
+      fetchRelayerInfo()
+        .then((info) => setRelayerInfo(info))
+        .catch(() => setRelayerInfo(null));
+    }
+  }, [dialog]);
 
   // Leave headroom for gas so "MAX" cannot produce a transaction that could
   // never be included.
@@ -437,6 +471,117 @@ export function VaultView() {
       setError(msg);
     } finally {
       setApprovingUsdg(false);
+    }
+  };
+
+  // Approve USDG for Permit2
+  const handleApprovePermit2 = async () => {
+    if (!address) return;
+    setApprovingPermit2(true);
+    setError("");
+    try {
+      const approveReq = buildPermit2ApprovalRequest();
+      const hash = await writeContractAsync({
+        ...approveReq,
+        chainId: ROBINHOOD_CHAIN_ID,
+      });
+      setNotice(t.vault.deposit.permit2ApprovalSubmitted);
+      if (publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash });
+      }
+      await refetchPermit2Allowance();
+      setNotice(t.vault.deposit.permit2ApprovalSuccess);
+    } catch (e: any) {
+      const msg = e?.shortMessage || e?.message || t.vault.errors.txFailed;
+      setError(msg);
+    } finally {
+      setApprovingPermit2(false);
+    }
+  };
+
+  // Sealed Basket Deposit Handler — off-chain Permit2 signature + Heirloom Relayer execution
+  const handleSealedBasketDeposit = async () => {
+    if (!realTrust || !vault?.vaultAddress || !address) {
+      setError(t.vault.errors.connectToDeposit);
+      return;
+    }
+    if (!basketPlan) {
+      setError(t.vault.errors.invalidAmount);
+      return;
+    }
+    if (basketPlan.error) {
+      setError(codeToMessage(basketPlan.error));
+      return;
+    }
+    if (!basketPlan.fullyQuoted) {
+      setError(t.vault.errors.quotesRequired);
+      return;
+    }
+    if (usdgBalanceRaw !== undefined && usdgBalanceRaw < basketPlan.totalWei) {
+      setError(t.vault.errors.insufficientUsdg(formatUnits(usdgBalanceRaw, 6)));
+      return;
+    }
+    if (usdgPermit2Allowance < basketPlan.totalWei) {
+      setError(t.vault.deposit.approvePermit2);
+      return;
+    }
+    if (!relayerInfo?.relayerAddress || !relayerInfo.isLive) {
+      setError(t.vault.deposit.relayerUnavailable);
+      return;
+    }
+
+    setIsRelaying(true);
+    setError("");
+    try {
+      const typed = buildPermit2TypedData({
+        amount: basketPlan.totalWei,
+        spender: relayerInfo.relayerAddress,
+        token: USDG_ADDRESS,
+      });
+
+      const signature = await signTypedDataAsync({
+        domain: typed.domain,
+        types: typed.types,
+        primaryType: typed.primaryType,
+        message: typed.message,
+      });
+
+      setNotice(t.vault.deposit.relayingSealedDeposit);
+
+      const result = await submitSealedDeposit(realTrust.trust.id, {
+        permit: {
+          permitted: {
+            token: USDG_ADDRESS,
+            amount: basketPlan.totalWei.toString(),
+          },
+          nonce: typed.nonce.toString(),
+          deadline: typed.deadline.toString(),
+        },
+        signature,
+        owner: address,
+        legs: basketPlan.swaps.map((s) => ({
+          symbol: s.symbol,
+          tokenAddress: s.tokenAddress,
+          amountIn: s.amountIn.toString(),
+          minOut: (s.minOut ?? 0n).toString(),
+          fee: s.routing?.fee ?? 3000,
+        })),
+        passthroughWei: basketPlan.passthroughWei.toString(),
+      });
+
+      setDepositTxHash(result.txHashes.swapTxHash || result.txHashes.pullTxHash);
+      setDialog("deposit_success");
+      setDepositAmount("");
+      refetchUsdgBalance();
+      refetchPermit2Allowance();
+      setTimeout(() => {
+        loadData();
+      }, 2000);
+    } catch (e: any) {
+      const msg = e?.shortMessage || e?.message || t.vault.errors.txFailed;
+      setError(msg);
+    } finally {
+      setIsRelaying(false);
     }
   };
 
@@ -1451,6 +1596,43 @@ export function VaultView() {
                   </div>
                 </div>
 
+                {basketInputAsset === "USDG" && (
+                  <div className="deposit-field">
+                    <label className="deposit-label">
+                      {t.vault.deposit.sealedExecutionLabel}
+                    </label>
+                    <div
+                      className="deposit-currency-options"
+                      role="group"
+                      aria-label={t.vault.deposit.sealedExecutionLabel}
+                    >
+                      <button
+                        type="button"
+                        aria-pressed={!sealedExecution}
+                        className={!sealedExecution ? "is-active" : ""}
+                        onClick={() => setSealedExecution(false)}
+                      >
+                        <Split size={13} />
+                        {t.vault.deposit.sealedExecutionPublic}
+                      </button>
+                      <button
+                        type="button"
+                        aria-pressed={sealedExecution}
+                        className={sealedExecution ? "is-active" : ""}
+                        onClick={() => setSealedExecution(true)}
+                      >
+                        <EyeOff size={13} />
+                        {t.vault.deposit.sealedExecutionDarkpool}
+                      </button>
+                    </div>
+                    {sealedExecution && (
+                      <p className="deposit-hint" style={{ marginTop: "6px" }}>
+                        {t.vault.deposit.sealedExecutionDarkpoolHint}
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {routerStatus && !routerStatus.available && (
                   <div className="deposit-router-warning" role="status">
                     <AlertTriangle size={16} />
@@ -1680,6 +1862,52 @@ export function VaultView() {
                     </>
                   )}
                 </button>
+              ) : basketInputAsset === "USDG" && sealedExecution ? (
+                usdgPermit2Allowance < (basketPlan?.totalWei ?? 0n) ? (
+                  <button
+                    className="button primary"
+                    onClick={handleApprovePermit2}
+                    disabled={
+                      busy ||
+                      approvingPermit2 ||
+                      quoting ||
+                      !depositAmount ||
+                      !basketPlan ||
+                      basketPlan.error !== "" ||
+                      !basketPlan.fullyQuoted
+                    }
+                  >
+                    {approvingPermit2 ? (
+                      t.vault.deposit.approvingPermit2
+                    ) : (
+                      <>
+                        <Check size={14} /> {t.vault.deposit.approvePermit2}
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <button
+                    className="button primary"
+                    onClick={handleSealedBasketDeposit}
+                    disabled={
+                      busy ||
+                      isRelaying ||
+                      quoting ||
+                      !depositAmount ||
+                      !basketPlan ||
+                      basketPlan.error !== "" ||
+                      !basketPlan.fullyQuoted
+                    }
+                  >
+                    {isRelaying ? (
+                      t.vault.deposit.relayingSealedDeposit
+                    ) : (
+                      <>
+                        <Shield size={14} /> {t.vault.deposit.signSealedDeposit}
+                      </>
+                    )}
+                  </button>
+                )
               ) : basketInputAsset === "USDG" &&
                 basketPlan !== null &&
                 basketPlan.error === "" &&
