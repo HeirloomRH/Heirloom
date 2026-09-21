@@ -15,9 +15,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-technical-docs/*
-!technical-docs/*.md
-technical-docs/TECH_UPDATES*
+technical-docs/
 
 # Dependencies and build outputs
 node_modules
