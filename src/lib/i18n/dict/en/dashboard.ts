@@ -39,6 +39,7 @@ export const dashboard = {
     beneficiary: "Inherited by me (Beneficiary)",
     active: "Active (Armed)",
     pendingFunding: "Pending Funding",
+    inGracePeriod: "Grace Period",
     successionTriggered: "Succession Triggered",
     paused: "Paused",
   },
@@ -46,6 +47,7 @@ export const dashboard = {
   status: {
     active: "Active · Armed",
     pendingFunding: "Pending Funding",
+    inGracePeriod: "Grace Period",
     successionTriggered: "Succession Triggered",
     paused: "Paused",
   },

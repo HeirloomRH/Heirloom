@@ -76,7 +76,29 @@ describe.skipIf(!dbAvailable)("28-Day Succession Grace Period & Worker", () => {
 
     // Should be rejected because grace period protects vault assets
     expect(claimRes.status).toBe(400);
-    expect(claimRes.body.error).toContain("succession switch is not triggered");
+    expect(claimRes.body.error).toContain("grace period");
+  }, 15000);
+
+  it("should prevent a beneficiary from claiming an already-unlocked milestone while trust is in_grace_period", async () => {
+    const schedRes = await query(
+      `INSERT INTO trust_vesting_schedules (trust_id, unlock_timestamp, percentage_bps, claimed)
+       VALUES ($1, NOW() - INTERVAL '1 day', 10000, FALSE) RETURNING id`,
+      [testTrustId]
+    );
+    const scheduleId = schedRes.rows[0].id;
+
+    const claimRes = await request(app)
+      .post(`/api/trusts/${testTrustId}/claim`)
+      .send({
+        beneficiaryAddress,
+        tokenSymbolOrAddress: "USDG",
+        scheduleId,
+      });
+
+    // Milestone date has passed, but grace period must still block it —
+    // otherwise a missed heartbeat becomes a way to force early claims.
+    expect(claimRes.status).toBe(400);
+    expect(claimRes.body.error).toContain("grace period");
   }, 15000);
 
   it("should transition from in_grace_period to succession_triggered once 28 days pass", async () => {

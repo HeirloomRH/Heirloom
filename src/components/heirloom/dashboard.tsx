@@ -30,7 +30,7 @@ export interface NormalizedTrust {
   beneficiaryAddress: string;
   vaultIndex: number;
   vaultAddress: string;
-  status: "pending_funding" | "active" | "succession_triggered" | "paused" | "completed" | string;
+  status: "pending_funding" | "active" | "in_grace_period" | "succession_triggered" | "paused" | "completed" | string;
   isRevocable: boolean;
   corpusFunded: boolean;
   heartbeatWindowSeconds: number | string;
@@ -156,6 +156,7 @@ export function Dashboard() {
     }
     if (filter === "active") return trust.status === "active";
     if (filter === "pending_funding") return trust.status === "pending_funding";
+    if (filter === "in_grace_period") return trust.status === "in_grace_period";
     if (filter === "succession_triggered")
       return trust.status === "succession_triggered";
     if (filter === "paused") return trust.status === "paused";
@@ -266,6 +267,9 @@ export function Dashboard() {
           <option value="pending_funding">
             {t.dashboard.filters.pendingFunding}
           </option>
+          <option value="in_grace_period">
+            {t.dashboard.filters.inGracePeriod}
+          </option>
           <option value="succession_triggered">
             {t.dashboard.filters.successionTriggered}
           </option>
@@ -302,6 +306,8 @@ export function Dashboard() {
                 ? t.dashboard.status.active
                 : trust.status === "pending_funding"
                 ? t.dashboard.status.pendingFunding
+                : trust.status === "in_grace_period"
+                ? t.dashboard.status.inGracePeriod
                 : trust.status === "succession_triggered"
                 ? t.dashboard.status.successionTriggered
                 : trust.status === "paused"
@@ -325,6 +331,8 @@ export function Dashboard() {
                         ? "text-emerald-400 border-emerald-800/60 bg-emerald-950/30"
                         : trust.status === "succession_triggered"
                         ? "text-rose-400 border-rose-800/60 bg-rose-950/30 font-semibold"
+                        : trust.status === "in_grace_period"
+                        ? "text-amber-400 border-amber-800/60 bg-amber-950/30 animate-pulse font-semibold"
                         : trust.status === "pending_funding"
                         ? "text-amber-400 border-amber-800/60 bg-amber-950/30"
                         : ""

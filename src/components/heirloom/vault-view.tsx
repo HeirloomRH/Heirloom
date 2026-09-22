@@ -1515,7 +1515,7 @@ export function VaultView() {
                   {vault.schedule.map((r, i) => {
                     const isPassed = new Date(r.date) <= new Date();
                     const isClaimed = !!r.claimed;
-                    const canClaim = (isPassed || isSuccessionTriggered) && isBeneficiary && !isClaimed;
+                    const canClaim = (isPassed || isSuccessionTriggered) && isBeneficiary && !isClaimed && !isInGracePeriod;
                     const fundedBalances = realTrust?.liveBalances.filter((b) => BigInt(b.balanceRaw) > 0n) || [];
                     const claimTokenSymbol = fundedBalances[0]?.token.symbol || "USDG";
 

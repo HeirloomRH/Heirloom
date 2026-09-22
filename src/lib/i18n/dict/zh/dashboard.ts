@@ -40,6 +40,7 @@ export const dashboard: typeof EnDashboard = {
     beneficiary: "我继承的（受益人）",
     active: "活跃（已就绪）",
     pendingFunding: "待注资",
+    inGracePeriod: "宽限期",
     successionTriggered: "已触发继承",
     paused: "已暂停",
   },
@@ -47,6 +48,7 @@ export const dashboard: typeof EnDashboard = {
   status: {
     active: "活跃 · 已就绪",
     pendingFunding: "待注资",
+    inGracePeriod: "宽限期",
     successionTriggered: "已触发继承",
     paused: "已暂停",
   },

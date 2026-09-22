@@ -614,6 +614,15 @@ trustsRouter.post("/:id/claim", async (req: Request, res: Response) => {
       trust.status === "succession_triggered" ||
       (graceDeadline && now > graceDeadline);
 
+    // Grace period pauses ordinary milestone claims — gives the grantor a
+    // window to check in before treating a missed heartbeat as succession.
+    // Succession-eligible claims (grace deadline already passed) are
+    // unaffected by this check.
+    const isInGracePeriod =
+      !isSuccession &&
+      (trust.status === "in_grace_period" ||
+        Boolean(deadline && now > deadline && graceDeadline && now <= graceDeadline));
+
     let isEligible = isSuccession;
     let scheduleRow: any = null;
 
@@ -624,13 +633,19 @@ trustsRouter.post("/:id/claim", async (req: Request, res: Response) => {
       );
       if (schedRes.rows.length > 0) {
         scheduleRow = schedRes.rows[0];
-        if (new Date(scheduleRow.unlock_timestamp) <= now && !scheduleRow.claimed) {
+        if (new Date(scheduleRow.unlock_timestamp) <= now && !scheduleRow.claimed && !isInGracePeriod) {
           isEligible = true;
         }
       }
     }
 
     if (!isEligible) {
+      if (isInGracePeriod) {
+        res.status(400).json({
+          error: "Claims are paused during the 28-day succession grace period. The grantor can check in to resume normal claims.",
+        });
+        return;
+      }
       res.status(400).json({
         error: "Vesting cliff has not unlocked yet and succession switch is not triggered.",
       });
