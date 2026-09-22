@@ -105,6 +105,45 @@ export interface InferenceReleaseSchedule {
   vault_index: number;
 }
 
+export interface RolloverInfo {
+  cyclesDue: number;
+  rolloverAtomic: string;
+}
+
+/**
+ * A missed/deferred cycle is never lost — the worker leaves next_release_at
+ * untouched until a release succeeds, so a schedule that's been stuck
+ * catches up one cycle per poll once funds/liquidity are available again
+ * (see inferenceReleaseWorker.ts). This is a read-only projection of that
+ * behavior: how many cycles are currently owed, and how much of that is
+ * "rollover" on top of the next single release, so the allowance UI can
+ * show a parent/beneficiary that nothing unspent evaporates.
+ */
+export function computeRolloverInfo(schedule: {
+  next_release_at: string | Date;
+  cadence_days: number;
+  usdg_per_cycle_atomic: string;
+  total_remaining_atomic: string;
+  active: boolean;
+}): RolloverInfo {
+  if (!schedule.active) return { cyclesDue: 0, rolloverAtomic: "0" };
+
+  const nextReleaseAt = new Date(schedule.next_release_at).getTime();
+  const now = Date.now();
+  if (now < nextReleaseAt) return { cyclesDue: 0, rolloverAtomic: "0" };
+
+  const cadenceMs = schedule.cadence_days * 86_400_000;
+  const cyclesDue = Math.floor((now - nextReleaseAt) / cadenceMs) + 1;
+
+  const perCycle = BigInt(schedule.usdg_per_cycle_atomic);
+  const remaining = BigInt(schedule.total_remaining_atomic);
+  const owed = perCycle * BigInt(cyclesDue);
+  const cappedOwed = owed > remaining ? remaining : owed;
+  const rollover = cappedOwed > perCycle ? cappedOwed - perCycle : 0n;
+
+  return { cyclesDue, rolloverAtomic: rollover.toString() };
+}
+
 export type CreditGrantOutcome =
   | { status: "confirmed"; txHash: Hash; usdgSpent: bigint }
   | { status: "deferred_thin_book"; detail: string }

@@ -6,6 +6,7 @@ import { pool } from "../src/db/index.js";
 import {
   beneficiaryKeyFromAddress,
   verifyBeneficiaryKeySignature,
+  computeRolloverInfo,
 } from "../src/services/inferenceLegService.js";
 
 let dbAvailable = false;
@@ -100,6 +101,64 @@ describe("verifyBeneficiaryKeySignature", () => {
       signature,
     });
     expect(isValid).toBe(false);
+  });
+});
+
+describe("computeRolloverInfo", () => {
+  const base = {
+    cadence_days: 30,
+    usdg_per_cycle_atomic: "100000000", // 100 USDG at 6 decimals
+    total_remaining_atomic: "1000000000", // 1000 USDG
+    active: true,
+  };
+
+  it("reports nothing owed for a schedule that isn't due yet", () => {
+    const info = computeRolloverInfo({
+      ...base,
+      next_release_at: new Date(Date.now() + 86_400_000),
+    });
+    expect(info.cyclesDue).toBe(0);
+    expect(info.rolloverAtomic).toBe("0");
+  });
+
+  it("reports no rollover for a schedule due exactly once, on time", () => {
+    const info = computeRolloverInfo({
+      ...base,
+      next_release_at: new Date(Date.now() - 1000),
+    });
+    expect(info.cyclesDue).toBe(1);
+    expect(info.rolloverAtomic).toBe("0");
+  });
+
+  it("accrues rollover for cycles missed while a release stayed deferred", () => {
+    // 3 full cadence periods have elapsed since next_release_at — nothing
+    // should be lost, it should show up as owed on top of the next release.
+    const info = computeRolloverInfo({
+      ...base,
+      next_release_at: new Date(Date.now() - 3 * 30 * 86_400_000),
+    });
+    expect(info.cyclesDue).toBe(4);
+    // 4 cycles owed, one of which is "the next release" — the other 3 are rollover
+    expect(info.rolloverAtomic).toBe((3 * 100_000_000).toString());
+  });
+
+  it("caps rollover at the schedule's remaining budget, never overpaying", () => {
+    const info = computeRolloverInfo({
+      ...base,
+      total_remaining_atomic: "150000000", // only 1.5 cycles left
+      next_release_at: new Date(Date.now() - 5 * 30 * 86_400_000),
+    });
+    expect(info.rolloverAtomic).toBe((150_000_000 - 100_000_000).toString());
+  });
+
+  it("reports nothing owed for an inactive (exhausted or cancelled) schedule", () => {
+    const info = computeRolloverInfo({
+      ...base,
+      active: false,
+      next_release_at: new Date(Date.now() - 5 * 30 * 86_400_000),
+    });
+    expect(info.cyclesDue).toBe(0);
+    expect(info.rolloverAtomic).toBe("0");
   });
 });
 

@@ -93,8 +93,12 @@ export const vault: typeof EnVault = {
     emptyTitle: "尚未配置 AI 配额。",
     emptyBody: "封存一笔 USDG 配额，即可按计划自动发放 CREDIT，无需人工干预。",
 
+    guardianControlsTitle: "内置监护控制",
+    guardianControlsBody:
+      "你设定每个周期的上限——受益人永远不会收到更多。错过或延后的周期不会丢失，会自动累积到下一次发放。而且一旦激活，CREDIT 只能用于 AI 使用——协议本身设计使其无法提现或转让。这是为未成年人设计的最安全的配额资产。",
+
     formTitle: "配置配额",
-    usdgPerCycleLabel: "每周期 USDG 数量",
+    usdgPerCycleLabel: "每周期 USDG 数量（上限）",
     usdgPerCyclePlaceholder: "例如 100",
     cadenceDaysLabel: "发放间隔（天）",
     cadenceDaysPlaceholder: "例如 30",
@@ -109,12 +113,16 @@ export const vault: typeof EnVault = {
 
     schedulesTitle: "生效中的配额",
     colBeneficiary: "受益人",
-    colPerCycle: "每周期",
+    colPerCycle: "每周期（上限）",
     colRemaining: "剩余",
     colNextRelease: "下次发放",
+    colRollover: "累积",
     colStatus: "状态",
     statusActive: "生效中",
     statusExhausted: "已用尽",
+    rolloverNone: "—",
+    rolloverAccrued: (amount: string, cycles: number) =>
+      `已累积 ${amount} USDG（${cycles} 个周期待发放）`,
 
     releasesTitle: "发放记录",
     releaseConfirmed: "已激活",

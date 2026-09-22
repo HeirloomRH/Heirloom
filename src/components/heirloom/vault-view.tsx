@@ -1642,6 +1642,21 @@ export function VaultView() {
                   {t.vault.inference.hint}
                 </p>
 
+                <div
+                  className="flex items-start gap-3 rounded-lg border border-emerald-800/40 bg-emerald-950/20 p-4"
+                  style={{ marginBottom: "24px" }}
+                >
+                  <Shield size={18} className="text-emerald-400 shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="text-sm font-semibold text-emerald-300 mb-1">
+                      {t.vault.inference.guardianControlsTitle}
+                    </h3>
+                    <p className="text-xs text-emerald-100/70 leading-relaxed">
+                      {t.vault.inference.guardianControlsBody}
+                    </p>
+                  </div>
+                </div>
+
                 {isGrantor && !isSuccessionTriggered && (
                   <div className="deposit-field" style={{ marginBottom: "24px" }}>
                     <h3 style={{ marginBottom: "6px" }}>{t.vault.inference.stakeTitle}</h3>
@@ -1841,6 +1856,7 @@ export function VaultView() {
                         <th>{t.vault.inference.colPerCycle}</th>
                         <th>{t.vault.inference.colRemaining}</th>
                         <th>{t.vault.inference.colNextRelease}</th>
+                        <th>{t.vault.inference.colRollover}</th>
                         <th>{t.vault.inference.colStatus}</th>
                       </tr>
                     </thead>
@@ -1858,6 +1874,18 @@ export function VaultView() {
                               day: "numeric",
                               year: "numeric",
                             })}
+                          </td>
+                          <td>
+                            {s.rollover && BigInt(s.rollover.rolloverAtomic) > 0n ? (
+                              <span className="text-amber-400">
+                                {t.vault.inference.rolloverAccrued(
+                                  formatUnits(BigInt(s.rollover.rolloverAtomic), 6),
+                                  s.rollover.cyclesDue,
+                                )}
+                              </span>
+                            ) : (
+                              t.vault.inference.rolloverNone
+                            )}
                           </td>
                           <td>
                             {s.active

@@ -91,8 +91,12 @@ export const vault = {
     emptyTitle: "No AI allowance configured yet.",
     emptyBody: "Seal a USDG allowance and it pays out CREDIT on a schedule, unattended.",
 
+    guardianControlsTitle: "Built-in guardian controls",
+    guardianControlsBody:
+      "You set the cap per cycle — the beneficiary can never receive more. A cycle that's missed or deferred isn't lost; it rolls into the next release automatically. And once activated, CREDIT becomes AI usage only — it can't be cashed out or transferred, by design of the protocol itself. It's the safest allowance asset there is for a minor.",
+
     formTitle: "Configure an allowance",
-    usdgPerCycleLabel: "USDG per cycle",
+    usdgPerCycleLabel: "USDG per cycle (cap)",
     usdgPerCyclePlaceholder: "e.g. 100",
     cadenceDaysLabel: "Every (days)",
     cadenceDaysPlaceholder: "e.g. 30",
@@ -107,12 +111,16 @@ export const vault = {
 
     schedulesTitle: "Active allowances",
     colBeneficiary: "Beneficiary",
-    colPerCycle: "Per cycle",
+    colPerCycle: "Per cycle (cap)",
     colRemaining: "Remaining",
     colNextRelease: "Next release",
+    colRollover: "Rollover",
     colStatus: "Status",
     statusActive: "Active",
     statusExhausted: "Exhausted",
+    rolloverNone: "—",
+    rolloverAccrued: (amount: string, cycles: number) =>
+      `+${amount} USDG accrued (${cycles} cycle${cycles === 1 ? "" : "s"} due)`,
 
     releasesTitle: "Release history",
     releaseConfirmed: "Activated",

@@ -33,6 +33,7 @@ import {
   executeStake,
   executeUnstake,
 } from "../services/orbioStakeService.js";
+import { computeRolloverInfo } from "../services/inferenceLegService.js";
 
 export const trustsRouter = Router();
 
@@ -960,7 +961,17 @@ trustsRouter.get("/:id/legs/inference", async (req: Request, res: Response) => {
       "SELECT * FROM inference_releases WHERE trust_id = $1 ORDER BY created_at DESC LIMIT 50",
       [id],
     );
-    res.json({ schedules: schedules.rows, releases: releases.rows });
+
+    // Guardian/beneficiary allowance controls: a cap the schedule enforces every
+    // cycle (usdg_per_cycle_atomic), plus a rollover readout — a missed cycle is
+    // never dropped, the worker catches it up automatically (see
+    // computeRolloverInfo docs), so surface how much is currently accrued.
+    const schedulesWithRollover = schedules.rows.map((s) => ({
+      ...s,
+      rollover: computeRolloverInfo(s),
+    }));
+
+    res.json({ schedules: schedulesWithRollover, releases: releases.rows });
   } catch (err) {
     console.error("Error fetching inference legs:", err);
     const message = err instanceof Error ? err.message : String(err);

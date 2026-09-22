@@ -357,6 +357,8 @@ export interface InferenceSchedule {
   total_remaining_atomic: string;
   active: boolean;
   created_at: string;
+  /** Guardian allowance controls: a missed cycle isn't lost, it accrues here. */
+  rollover: { cyclesDue: number; rolloverAtomic: string };
 }
 
 export interface InferenceRelease {
