@@ -14,13 +14,29 @@ const ALERT_THRESHOLDS = [
   { column: "telegram_alert_sent_24h", days: 0,  hours: 24, label: "24 hours", urgent: true },
 ] as const;
 
+// Countdown reminders sent while a trust sits in the 28-day grace period, on
+// top of the one-time sendGracePeriodAlert fired the moment it starts.
+const GRACE_ALERT_THRESHOLDS = [
+  { column: "telegram_alert_sent_grace_14d", days: 14, label: "14 days", urgent: true },
+  { column: "telegram_alert_sent_grace_7d",  days: 7,  label: "7 days",  urgent: true },
+  { column: "telegram_alert_sent_grace_24h", days: 0,  hours: 24, label: "24 hours", urgent: true },
+] as const;
+
 function formatAlert(trustName: string, label: string, urgent: boolean): string {
   const prefix = urgent ? "🚨 <b>URGENT</b> — " : "⏰ ";
   return (
     `${prefix}Heirloom Heartbeat Reminder\n\n` +
     `Your trust <b>${escapeHtml(trustName)}</b> has <b>${label}</b> remaining before the ` +
     `dead-man's switch activates.\n\n` +
-    `Tap below to check in and reset your 90-day window.`
+    `Tap below to check in and reset your window.`
+  );
+}
+
+function formatGraceAlert(trustName: string, label: string): string {
+  return (
+    `🚨 <b>GRACE PERIOD ENDING SOON</b> 🚨\n\n` +
+    `Your trust <b>${escapeHtml(trustName)}</b> has <b>${label}</b> remaining in its 28-day safety grace period.\n\n` +
+    `Vault assets stay locked until you check in. Tap below to restore active status before succession triggers.`
   );
 }
 
@@ -93,6 +109,64 @@ export async function sendPendingHeartbeatAlerts(): Promise<void> {
       } catch (err) {
         console.error(
           `[TelegramAlerts] Failed to send ${threshold.label} alert for trust ${trust.id}:`,
+          err
+        );
+      }
+    }
+  }
+
+  for (const threshold of GRACE_ALERT_THRESHOLDS) {
+    const windowHours = "hours" in threshold
+      ? threshold.hours
+      : threshold.days * 24;
+
+    const sql = `
+      SELECT id, name, grace_period_deadline, telegram_chat_id
+      FROM trusts
+      WHERE status = 'in_grace_period'
+        AND telegram_chat_id IS NOT NULL
+        AND telegram_alerts_enabled = TRUE
+        AND grace_period_deadline IS NOT NULL
+        AND ${threshold.column} = FALSE
+        AND grace_period_deadline > NOW()
+        AND grace_period_deadline <= NOW() + INTERVAL '${windowHours} hours'
+    `;
+
+    let rows: Array<{
+      id: string;
+      name: string;
+      grace_period_deadline: string;
+      telegram_chat_id: number;
+    }>;
+
+    try {
+      const result = await query(sql);
+      rows = result.rows;
+    } catch (err) {
+      console.error(`[TelegramAlerts] Grace query error for threshold ${threshold.label}:`, err);
+      continue;
+    }
+
+    for (const trust of rows) {
+      try {
+        await sendMessage({
+          chat_id: trust.telegram_chat_id,
+          text: formatGraceAlert(trust.name, threshold.label),
+          parse_mode: "HTML",
+          reply_markup: buildCheckinKeyboard(trust.id, miniAppUrl),
+        });
+
+        await query(
+          `UPDATE trusts SET ${threshold.column} = TRUE WHERE id = $1`,
+          [trust.id]
+        );
+
+        console.log(
+          `[TelegramAlerts] Sent grace ${threshold.label} alert to chat ${trust.telegram_chat_id} for trust ${trust.id}`
+        );
+      } catch (err) {
+        console.error(
+          `[TelegramAlerts] Failed to send grace ${threshold.label} alert for trust ${trust.id}:`,
           err
         );
       }

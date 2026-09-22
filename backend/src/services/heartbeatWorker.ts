@@ -129,7 +129,8 @@ export async function checkDeadManSwitches(): Promise<number> {
       }
     }
 
-    // Send threshold-based heartbeat reminder alerts (30d / 14d / 7d / 24h)
+    // Send threshold-based heartbeat reminder alerts (30d/14d/7d/24h) and
+    // grace-period countdown reminders (14d/7d/24h)
     await sendPendingHeartbeatAlerts();
 
     return (graceResult.rowCount || 0) + (successionResult.rowCount || 0);
