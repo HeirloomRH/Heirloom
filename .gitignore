@@ -20,6 +20,10 @@ technical-docs/
 # Dependencies and build outputs
 node_modules
 bun.lockb
+# This project uses bun.lock, not npm — package-lock.json here confuses
+# Vercel's package-manager auto-detection into using npm, which fails on
+# the wagmi/rainbowkit peer mismatch that bun tolerates silently.
+package-lock.json
 dist
 dist-ssr
 build/
