@@ -156,3 +156,4 @@ function RootComponent() {
     </WagmiProvider>
   );
 }
+
