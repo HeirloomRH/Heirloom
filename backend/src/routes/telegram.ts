@@ -19,6 +19,21 @@ export const telegramRouter = Router();
  *   - callback_query  → inline button taps (future extensibility)
  */
 telegramRouter.post("/webhook", async (req: Request, res: Response) => {
+  // Verify this actually came from Telegram before doing anything — without
+  // this, anyone could POST a forged /unlink or /status directly to this
+  // public endpoint against any chat_id, no real Telegram account needed.
+  if (config.telegramWebhookSecret) {
+    const provided = req.headers["x-telegram-bot-api-secret-token"];
+    if (provided !== config.telegramWebhookSecret) {
+      res.status(401).json({ ok: false });
+      return;
+    }
+  } else {
+    console.warn(
+      "[TelegramBot] TELEGRAM_WEBHOOK_SECRET is not set — /webhook is accepting unauthenticated requests."
+    );
+  }
+
   // Always respond 200 immediately — Telegram retries if we don't
   res.status(200).json({ ok: true });
 

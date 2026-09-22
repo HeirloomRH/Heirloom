@@ -2,6 +2,7 @@ import { describe, it, expect } from "bun:test";
 import request from "supertest";
 import { app } from "../src/app.js";
 import { pool } from "../src/db/index.js";
+import { config } from "../src/config.js";
 
 let dbAvailable = false;
 if (process.env.DATABASE_URL) {
@@ -45,6 +46,32 @@ describe("Telegram Bot API & Webhook", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
+  });
+
+  it("POST /api/telegram/webhook should reject requests missing a valid secret token once one is configured", async () => {
+    const original = config.telegramWebhookSecret;
+    config.telegramWebhookSecret = "test-secret-abc123";
+    try {
+      const wrongHeader = await request(app)
+        .post("/api/telegram/webhook")
+        .set("X-Telegram-Bot-Api-Secret-Token", "wrong-value")
+        .send({ update_id: 1, message: { text: "/status", chat: { id: 1 } } });
+      expect(wrongHeader.status).toBe(401);
+
+      const missingHeader = await request(app)
+        .post("/api/telegram/webhook")
+        .send({ update_id: 2, message: { text: "/status", chat: { id: 1 } } });
+      expect(missingHeader.status).toBe(401);
+
+      const correctHeader = await request(app)
+        .post("/api/telegram/webhook")
+        .set("X-Telegram-Bot-Api-Secret-Token", "test-secret-abc123")
+        .send({ update_id: 3, message: { text: "/status", chat: { id: 1 } } });
+      expect(correctHeader.status).toBe(200);
+      expect(correctHeader.body.ok).toBe(true);
+    } finally {
+      config.telegramWebhookSecret = original;
+    }
   });
 });
 

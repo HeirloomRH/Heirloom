@@ -49,13 +49,13 @@ export async function resolveBeneficiaryKey(
 }
 
 // EIP-712 domain shared with vaultService.ts's HEIRLOOM_EIP712_DOMAIN (same
-// protocol, same verifying contract placeholder — kept as a separate literal
-// here to avoid a circular import between the two services).
+// protocol, same verifying contract — kept as a separate literal here to
+// avoid a circular import between the two services).
 export const HEIRLOOM_EIP712_DOMAIN = {
   name: "Heirloom Trust Protocol",
-  version: "1",
+  version: config.eip712DomainVersion,
   chainId: ROBINHOOD_CHAIN_ID,
-  verifyingContract: "0x0000000000000000000000000000000000000000" as Address,
+  verifyingContract: getAddress(config.eip712VerifyingContract) as Address,
 } as const;
 
 export const BENEFICIARY_KEY_TYPES = {

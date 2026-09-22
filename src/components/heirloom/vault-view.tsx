@@ -998,7 +998,10 @@ export function VaultView() {
           name: "Heirloom Trust Protocol",
           version: "1",
           chainId: ROBINHOOD_CHAIN_ID,
-          verifyingContract: "0x0000000000000000000000000000000000000000",
+          // Must match backend config.eip712VerifyingContract exactly (see
+          // backend/src/config.ts) — a mismatch here fails every heartbeat
+          // signature verification.
+          verifyingContract: "0x2F5a6FE666262c8361C74428451BE5A9914c7225",
         },
         types: {
           Heartbeat: [

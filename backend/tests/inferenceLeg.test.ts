@@ -7,6 +7,8 @@ import {
   beneficiaryKeyFromAddress,
   verifyBeneficiaryKeySignature,
   computeRolloverInfo,
+  HEIRLOOM_EIP712_DOMAIN,
+  BENEFICIARY_KEY_TYPES,
 } from "../src/services/inferenceLegService.js";
 
 let dbAvailable = false;
@@ -44,20 +46,8 @@ describe("verifyBeneficiaryKeySignature", () => {
 
   async function sign() {
     return account.signTypedData({
-      domain: {
-        name: "Heirloom Trust Protocol",
-        version: "1",
-        chainId: 4663,
-        verifyingContract: "0x0000000000000000000000000000000000000000",
-      },
-      types: {
-        BeneficiaryKeyRegistration: [
-          { name: "trustId", type: "string" },
-          { name: "beneficiary", type: "address" },
-          { name: "keyHash", type: "bytes32" },
-          { name: "timestamp", type: "uint256" },
-        ],
-      },
+      domain: HEIRLOOM_EIP712_DOMAIN,
+      types: BENEFICIARY_KEY_TYPES,
       primaryType: "BeneficiaryKeyRegistration",
       message: { trustId, beneficiary: account.address, keyHash, timestamp: BigInt(timestamp) },
     });

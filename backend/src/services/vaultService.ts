@@ -139,9 +139,9 @@ export async function executeVaultPayout(params: {
  */
 export const HEIRLOOM_EIP712_DOMAIN = {
   name: "Heirloom Trust Protocol",
-  version: "1",
+  version: config.eip712DomainVersion,
   chainId: ROBINHOOD_CHAIN_ID,
-  verifyingContract: "0x0000000000000000000000000000000000000000" as Address,
+  verifyingContract: getAddress(config.eip712VerifyingContract) as Address,
 } as const;
 
 export const HEARTBEAT_TYPES = {

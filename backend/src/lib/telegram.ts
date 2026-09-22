@@ -65,6 +65,7 @@ export async function setWebhook(webhookUrl: string): Promise<void> {
     url: webhookUrl,
     allowed_updates: ["message", "callback_query"],
     drop_pending_updates: true,
+    ...(config.telegramWebhookSecret ? { secret_token: config.telegramWebhookSecret } : {}),
   });
 }
 

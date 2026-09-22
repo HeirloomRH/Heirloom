@@ -65,7 +65,30 @@ export const config = {
   // Telegram Bot
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || "",
   telegramBotUsername: (process.env.TELEGRAM_BOT_USERNAME || "@HeirloomRHBot").replace(/^@/, ""),
+  // Sent to Telegram on setWebhook and echoed back on every update in the
+  // X-Telegram-Bot-Api-Secret-Token header. No fallback value on purpose —
+  // an anonymous POST to /api/telegram/webhook could otherwise forge
+  // /unlink or /status against any chat_id with no real Telegram account
+  // involved. Unset means the webhook route currently accepts unauthenticated
+  // requests (logged loudly); set this in Render's env to close the gap.
+  telegramWebhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET || "",
 
   // Frontend Origin for CORS
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:5173",
+
+  // EIP-712 domain shared by every off-chain typed-data signature scheme
+  // (heartbeats, beneficiary key registration, private-mode signatures).
+  // The zero address was a real gap: EIP-712's verifyingContract exists
+  // specifically to stop a signature crafted for one app/contract from
+  // verifying against another that happens to use the same domain
+  // name/version/chainId — 0x000...000 defeats that. No TrustVault
+  // contract is deployed yet (see docs/Heirloom Private Legacy.pdf §3), so
+  // this is a deterministic, unique-to-Heirloom placeholder
+  // (keccak256("heirloom.trust.protocol.eip712.v1"), last 20 bytes) rather
+  // than a real deployed verifier. Bump eip712DomainVersion to invalidate
+  // every previously-signed message at once if this placeholder is ever
+  // replaced with a real contract address.
+  eip712VerifyingContract:
+    process.env.EIP712_VERIFYING_CONTRACT || "0x2F5a6FE666262c8361C74428451BE5A9914c7225",
+  eip712DomainVersion: process.env.EIP712_DOMAIN_VERSION || "1",
 };
