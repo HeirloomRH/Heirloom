@@ -6,6 +6,7 @@ import {
   type Hash,
 } from "viem";
 import { ROBINHOOD_CHAIN_ID } from "../lib/robinhoodTokens.js";
+import { config } from "../config.js";
 
 export interface CommitmentRecord {
   trustId: number;
@@ -30,9 +31,9 @@ export interface StageKeyRecord {
 
 export const PRIVACY_EIP712_DOMAIN = {
   name: "Heirloom Privacy Protocol",
-  version: "1",
+  version: config.eip712DomainVersion,
   chainId: ROBINHOOD_CHAIN_ID,
-  verifyingContract: "0x0000000000000000000000000000000000000000" as Address,
+  verifyingContract: getAddress(config.eip712VerifyingContract) as Address,
 } as const;
 
 export const PRIVATE_HEARTBEAT_TYPES = {
@@ -204,16 +205,34 @@ export class PrivacyService {
   }
 
   /**
-   * Get solvency proof summary
+   * Get solvency proof summary. No shielded-pool proving system is deployed
+   * yet (privacy contract addresses are placeholders — see docs/Heirloom
+   * Private Legacy.pdf §3), so this must never fabricate a proof or an
+   * "isSolvent: true" claim. Returns not_configured until a real epoch with
+   * a real solvency_proof exists.
    */
   static async getSolvencySummary() {
     const res = await query(`SELECT * FROM epochs ORDER BY epoch_index DESC LIMIT 1`);
     const meterRes = await query(`SELECT meter_count FROM sets WHERE name = 'rhc_mainnet_pool_v1'`);
 
+    if (res.rows.length === 0) {
+      return {
+        status: "not_configured" as const,
+        latestEpoch: null,
+        anonymitySetSize: meterRes.rows[0]?.meter_count ?? null,
+        isSolvent: null,
+        network: "Robinhood Chain (4663)",
+      };
+    }
+
     return {
-      latestEpoch: res.rows[0] || { epoch_index: 1, total_shielded_usd: "150000.00", solvency_proof: "0x_valid_solvency_proof" },
-      anonymitySetSize: meterRes.rows[0]?.meter_count || 128,
-      isSolvent: true,
+      // epochs has no verified-solvency column and no verifier is deployed
+      // to check solvency_proof against — isSolvent stays null rather than
+      // asserting a claim nothing has actually checked.
+      status: "live" as const,
+      latestEpoch: res.rows[0],
+      anonymitySetSize: meterRes.rows[0]?.meter_count ?? null,
+      isSolvent: null,
       network: "Robinhood Chain (4663)",
     };
   }
