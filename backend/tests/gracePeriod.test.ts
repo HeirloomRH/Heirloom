@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import request from "supertest";
+import { privateKeyToAccount } from "viem/accounts";
 import { app } from "../src/app.js";
 import { pool, query } from "../src/db/index.js";
 import { checkDeadManSwitches } from "../src/services/heartbeatWorker.js";
+import { HEIRLOOM_EIP712_DOMAIN, HEARTBEAT_TYPES } from "../src/services/vaultService.js";
 
 let dbAvailable = false;
 if (process.env.DATABASE_URL) {
@@ -118,5 +120,36 @@ describe.skipIf(!dbAvailable)("28-Day Succession Grace Period & Worker", () => {
     const apiRes = await request(app).get(`/api/trusts/${testTrustId}`);
     expect(apiRes.status).toBe(200);
     expect(apiRes.body.trust.status).toBe("succession_triggered");
+  }, 15000);
+
+  it("should refuse a normal heartbeat check-in once succession has triggered", async () => {
+    // Anvil/Hardhat default account #1 — matches grantorAddress above.
+    const grantorKey = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d";
+    const account = privateKeyToAccount(grantorKey);
+    const timestamp = Math.floor(Date.now() / 1000);
+    const message = "I am alive";
+
+    const signature = await account.signTypedData({
+      domain: HEIRLOOM_EIP712_DOMAIN,
+      types: HEARTBEAT_TYPES,
+      primaryType: "Heartbeat",
+      message: {
+        trustId: testTrustId,
+        grantor: grantorAddress,
+        timestamp: BigInt(timestamp),
+        message,
+      },
+    });
+
+    const res = await request(app)
+      .post(`/api/trusts/${testTrustId}/heartbeat`)
+      .send({ grantorAddress, timestamp, message, signature });
+
+    // A finalized succession must never be revertible by a routine check-in
+    // — the beneficiary may already have claimed the corpus.
+    expect(res.status).toBe(409);
+
+    const checkRes = await query("SELECT status FROM trusts WHERE id = $1", [testTrustId]);
+    expect(checkRes.rows[0].status).toBe("succession_triggered");
   }, 15000);
 });

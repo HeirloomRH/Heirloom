@@ -514,6 +514,17 @@ trustsRouter.post("/:id/heartbeat", async (req: Request, res: Response) => {
       return;
     }
 
+    // Succession is final once triggered — the beneficiary may already have
+    // claimed the corpus. A normal heartbeat must never revert that; only
+    // in_grace_period (where nothing has been distributed yet) recovers to
+    // active. See docs/Heirloom Private Legacy.pdf §17.1 / ticket #3.
+    if (trust.status === "succession_triggered") {
+      res.status(409).json({
+        error: "This trust's succession has already triggered and cannot be reversed by a normal check-in.",
+      });
+      return;
+    }
+
     // Record audit log
     await query(
       `INSERT INTO heartbeat_logs (trust_id, grantor_address, signature, signed_timestamp)
@@ -530,7 +541,7 @@ trustsRouter.post("/:id/heartbeat", async (req: Request, res: Response) => {
        SET last_heartbeat_at = NOW(),
            heartbeat_deadline = $1,
            grace_period_deadline = NULL,
-           status = CASE WHEN status IN ('succession_triggered', 'in_grace_period') THEN 'active' ELSE status END,
+           status = CASE WHEN status = 'in_grace_period' THEN 'active' ELSE status END,
            telegram_alert_sent_30d = FALSE,
            telegram_alert_sent_14d = FALSE,
            telegram_alert_sent_7d = FALSE,
