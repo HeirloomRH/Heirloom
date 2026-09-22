@@ -31,12 +31,51 @@ function getStudioAccount() {
   }
 }
 
-export function getConciergeStatus() {
+// A configured key proves nothing about whether Orbio's gateway actually
+// recognizes the account — it only becomes "known" once it has activated
+// some CREDIT balance. Cache the real liveness check briefly so opening the
+// widget repeatedly doesn't hammer the gateway.
+const STATUS_CACHE_MS = 60_000;
+let cachedStatus: { isLive: boolean; detail?: string } | null = null;
+let cachedStatusAt = 0;
+
+async function checkGatewayLive(apiKey: string): Promise<{ isLive: boolean; detail?: string }> {
+  try {
+    const res = await fetch(`${config.orbioGatewayUrl}/key`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    if (res.ok) return { isLive: true };
+    if (res.status === 401) {
+      return {
+        isLive: false,
+        detail: "Studio wallet has no activated CREDIT balance yet.",
+      };
+    }
+    return { isLive: false, detail: `Gateway returned ${res.status}` };
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    return { isLive: false, detail: `Gateway unreachable: ${detail}` };
+  }
+}
+
+export async function getConciergeStatus() {
   const account = getStudioAccount();
+  if (!account) {
+    return { gatewayUrl: config.orbioGatewayUrl, studioAddress: null, isLive: false };
+  }
+
+  const now = Date.now();
+  if (!cachedStatus || now - cachedStatusAt > STATUS_CACHE_MS) {
+    const apiKey = await getApiKey();
+    cachedStatus = await checkGatewayLive(apiKey);
+    cachedStatusAt = now;
+  }
+
   return {
     gatewayUrl: config.orbioGatewayUrl,
-    studioAddress: account ? account.address : null,
-    isLive: account !== null,
+    studioAddress: account.address,
+    isLive: cachedStatus.isLive,
+    detail: cachedStatus.detail,
   };
 }
 

@@ -11,8 +11,8 @@ export const conciergeRouter = Router();
  * GET /api/concierge/status
  * Whether the studio's Orbio-funded concierge is configured on this node.
  */
-conciergeRouter.get("/status", (_req: Request, res: Response) => {
-  res.json(getConciergeStatus());
+conciergeRouter.get("/status", async (_req: Request, res: Response) => {
+  res.json(await getConciergeStatus());
 });
 
 /**

@@ -559,3 +559,40 @@ export async function unlinkTelegram(trustId: string): Promise<{ success: boolea
   }
   return data;
 }
+
+export interface ConciergeMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+
+export interface ConciergeStatus {
+  gatewayUrl: string;
+  studioAddress: string | null;
+  isLive: boolean;
+  detail?: string;
+}
+
+/** Whether Heirloom's Orbio-funded concierge is configured and reachable on this node. */
+export async function fetchConciergeStatus(): Promise<ConciergeStatus> {
+  const res = await fetch(`${API_BASE_URL}/api/concierge/status`);
+  if (!res.ok) return { gatewayUrl: "", studioAddress: null, isLive: false };
+  return res.json();
+}
+
+/**
+ * Ask Heirloom's setup/heartbeat/beneficiary concierge a question. Runs on
+ * Orbio inference paid for with studio-held CREDIT, never the caller's own
+ * funds.
+ */
+export async function askConcierge(messages: ConciergeMessage[]): Promise<string> {
+  const res = await fetch(`${API_BASE_URL}/api/concierge`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Concierge request failed");
+  }
+  return data.reply as string;
+}

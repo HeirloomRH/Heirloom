@@ -15,6 +15,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { SiteHeader, SiteFooter } from "../components/heirloom/chrome";
+import { ConciergeWidget } from "../components/heirloom/concierge-widget";
 import { I18nProvider, useT } from "../lib/i18n";
 
 function NotFoundComponent() {
@@ -149,6 +150,7 @@ function RootComponent() {
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           <Outlet />
           <SiteFooter />
+          <ConciergeWidget />
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>
